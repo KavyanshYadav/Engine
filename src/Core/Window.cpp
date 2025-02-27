@@ -1,6 +1,7 @@
 #include "Window.h"
 #include <iostream>
 
+
 Window::Window(int width, int height, const std::string& title) {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -19,6 +20,8 @@ Window::Window(int width, int height, const std::string& title) {
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetMouseButtonCallback(window,MouseCallback);
+    
 }
 
 Window::~Window() {

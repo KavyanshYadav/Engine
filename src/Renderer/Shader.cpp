@@ -83,9 +83,9 @@ void Shader::SetUniform4f(const std::string& name, float v0, float v1, float v2,
 }
 
 // Matrix4 Uniform
-// void Shader::SetUniformMat4(const std::string& name, const glm::mat4& matrix) {
-//     glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
-// }
+void Shader::SetUniformMat4(const std::string& name, const glm::mat4& matrix) {
+    glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
+}
 
 
 
@@ -97,7 +97,7 @@ void Shader::Use () {
 std::string Shader::ReadShaderSource(const char* filePath) {
     std::ifstream file(filePath);
     std::stringstream buffer;
-
+    std::cout << filePath <<std::endl;
     if (file) {
         buffer << file.rdbuf();
         file.close();

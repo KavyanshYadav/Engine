@@ -29,6 +29,18 @@ void UIManager::Render() {
     if (ImGui::Button("Recompile Shader")) {
         renderer->ReloadShader();
     }
+    if (ImGui::Button("Get Scene Meshes")) {
+        for (SceneObject* obj: renderer->getActiveScene()->GetSceneNodes())
+    {
+        std::cout << obj ; 
+    }
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0)); // Lock position
+    ImGui::Begin("Sidebar", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    ImGui::Text("Settings");
+    ImGui::End();
+
     ImGui::End();
 
     ImGui::Render();

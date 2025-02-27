@@ -21,6 +21,7 @@ public:
 	void RenderTriangle();
     void RenderImgui();
     void ReloadShader();
+    Scene* getActiveScene();
 private:
     GLuint VAO, VBO;
     GLuint shaderProgram;

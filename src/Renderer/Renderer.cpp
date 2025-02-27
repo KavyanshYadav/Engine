@@ -20,7 +20,8 @@
 //        FragColor = vec4(1.0, 0.5, 0.2, 1.0); // Orange color
 //    }
 //)";
-
+int windowWidth = 1280, windowHeight = 720;
+int panelWidth = 300, panelHeight = 150;
 
 Renderer::Renderer(GLFWwindow* window) {
     if (!window) {
@@ -54,35 +55,14 @@ std::vector<unsigned int> triangleIndices = {
 };
 
     Scene* scene = new Scene();
-    Mesh* triangle =  new Mesh();
-    Mesh* Sqaure =  new Mesh();
+    Mesh* Sqaure =  new Mesh(shader);
 
-
-    Sqaure->LoadMesh(SqauareVertices,triangleIndices);
-
+    Sqaure->LoadMesh(triangleVertices,triangleIndices);
     scene->AddObject(Sqaure);
     Scenes.push_back(scene);
+    Sqaure->Translate(glm::vec3(0.1f,0.0f,0.0f));
     this->shaderProgram = shader->CreateShaderProgram();
 
-}
-
-void Renderer::RenderImgui() {
-    // Start the ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    // Example UI Window
-    ImGui::Begin("Debug Window");
-    ImGui::Text("Hello, ImGui!");
-    if (ImGui::Button("Press Me")) {
-        std::cout << "Button Pressed!" << std::endl;
-    }
-    ImGui::End();
-
-    // Render ImGui
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 
@@ -99,19 +79,26 @@ Renderer::~Renderer() {
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
 }
+Scene* Renderer::getActiveScene()
+{
+    return Scenes.front();
+}
+
 
 void Renderer::RenderTriangle() {
     float timeValue = glfwGetTime();
     float redValue = (sin(timeValue) / 2.0f) + 0.5f;
-    shader->Use();
     shader->SetUniform4f("ourColor", redValue, 0.5f, 0.2f, 1.0f);
-
+    shader->Use();
+    
     for (Scene* Scene : Scenes) {
-        Scene->Render();
+        Scene->Render(shader);
+        
     }
 }
 
 void Renderer::Clear() {
+    glViewport(panelWidth, panelHeight, windowWidth - panelWidth, windowHeight - panelHeight);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
