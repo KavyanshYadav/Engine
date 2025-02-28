@@ -20,7 +20,6 @@ Window::Window(int width, int height, const std::string& title) {
     }
 
     glfwMakeContextCurrent(window);
-    glfwSetMouseButtonCallback(window,MouseCallback);
     
 }
 

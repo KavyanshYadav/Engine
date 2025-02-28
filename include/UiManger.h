@@ -1,12 +1,13 @@
-#ifndef UIMANAGER_HPP
-#define UIMANAGER_HPP
+#pragma once
+
+#include <glad/glad.h>  
 #include "Renderer.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "GLFW/glfw3.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneObject.h"
+
 
 class UIManager {
 public:
@@ -18,5 +19,3 @@ public:
 private:
     Renderer * renderer;
 };
-
-#endif // UIMANAGER_HPP

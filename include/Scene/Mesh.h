@@ -23,9 +23,18 @@ public:
     void LoadMesh(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
     void Update(float deltaTime) override;
     void Render(Shader *shader1) override;
+
     void Translate(const glm::vec3& translation);
     void Rotate(float angle, const glm::vec3& axis);
     void Scale(const glm::vec3& scaleFactor);
+
+    void SetPosition(const glm::vec3& newPosition);
+    void SetRotation(const glm::vec3& eulerAngles);
+    void SetRotationQuat(const glm::quat& quatRotation);
+    void SetScale(const glm::vec3& newScale);
+
+    glm::vec3 GetPosition() const { return position; }
+    glm::vec3 GetScale() const { return scale; }
 
 private:
     GLuint VAO, VBO, EBO;  

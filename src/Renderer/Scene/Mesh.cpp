@@ -7,6 +7,7 @@ Mesh::Mesh(Shader *shader):shader(shader) {
     rotationAngle = 0.0f;
     rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);  
     scale = glm::vec3(1.0f);
+    // rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); 
     UpdateModelMatrix();
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -46,6 +47,26 @@ void Mesh::Translate(const glm::vec3& translation) {
     position += translation;
     UpdateModelMatrix();
 }
+void Mesh::SetPosition(const glm::vec3& newPosition) {
+    position = newPosition;
+    UpdateModelMatrix();
+}
+
+void Mesh::SetRotation(const glm::vec3& eulerAngles) {
+    // rotation = glm::quat(glm::radians(eulerAngles)); 
+    UpdateModelMatrix();
+}
+
+void Mesh::SetRotationQuat(const glm::quat& quatRotation) {
+    // rotation = quatRotation;
+    UpdateModelMatrix();
+}
+
+void Mesh::SetScale(const glm::vec3& newScale) {
+    scale = newScale;
+    UpdateModelMatrix();
+}
+
 
 void Mesh::Rotate(float angle, const glm::vec3& axis) {
     rotationAngle += angle;
@@ -57,6 +78,7 @@ void Mesh::Scale(const glm::vec3& scaleFactor) {
     scale *= scaleFactor;
     UpdateModelMatrix();
 }
+
 
 void Mesh::UpdateModelMatrix() {
     modelMatrix = glm::mat4(1.0f);
@@ -76,6 +98,7 @@ void Mesh::Render(Shader *shader1) {
     //     glm::vec4 row = glm::row(modelMatrix, i);
     //     std::cout << row.x << " " << row.y << " " << row.z << " " << row.w << std::endl;
     // }
+    shader1->Use();
     shader1->SetUniformMat4("model",modelMatrix);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);  

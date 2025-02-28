@@ -17,6 +17,7 @@ public:
 
 private:
     GLFWwindow* window;
+    Input * inputhandler;
 };
 
 #endif
