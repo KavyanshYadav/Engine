@@ -4,7 +4,7 @@
 // Constructor: Initialize subsystems
 Application::Application() {
     window = new Window(1280, 720, "OpenGL Engine");
-	renderer = new Renderer(window->GetGLFWWindow());
+	renderer = new Renderer(window);
     uimanger = new UIManager(window->GetGLFWWindow(),renderer);
     isRunning = true;
 }

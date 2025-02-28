@@ -23,8 +23,8 @@
 int windowWidth = 1280, windowHeight = 720;
 int panelWidth = 300, panelHeight = 150;
 
-Renderer::Renderer(GLFWwindow* window) {
-    if (!window) {
+Renderer::Renderer(Window *window){
+    if (!window->GetGLFWWindow()) {
         std::cerr << "GLFW window is null!" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -98,7 +98,8 @@ void Renderer::RenderTriangle() {
 }
 
 void Renderer::Clear() {
-    glViewport(panelWidth, panelHeight, windowWidth - panelWidth, windowHeight - panelHeight);
+    // glViewport(panelWidth, panelHeight, activeWindowClass->getWindowSize().x- panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
+    glEnable(GL_SCISSOR_TEST);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }

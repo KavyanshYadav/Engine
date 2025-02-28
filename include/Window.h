@@ -1,5 +1,4 @@
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#pragma once
 
 #include <GLFW/glfw3.h>
 #include <string>
@@ -14,10 +13,22 @@ public:
     void PollEvents();
     void SwapBuffers();
     GLFWwindow* GetGLFWWindow() const;
+    glm::vec2 getWindowSize();
+    void setWindowSize(const glm::vec2& size);
+    glm::vec2 getFramebufferSize();
+    void setTitle(const std::string& title);
+    void setFullscreen(bool fullscreen);
+    bool isFullscreen() const;
+    void minimize();
+    void maximize();
+    void restore();
+    bool shouldClose() const;
+    void setShouldClose(bool close);
+
 
 private:
     GLFWwindow* window;
     Input * inputhandler;
 };
 
-#endif
+
