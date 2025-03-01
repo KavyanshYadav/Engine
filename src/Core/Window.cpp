@@ -1,6 +1,6 @@
 #include "Window.h"
 #include <iostream>
-
+#include "Input.h"
 
 Window::Window(int width, int height, const std::string& title) {
     if (!glfwInit()) {

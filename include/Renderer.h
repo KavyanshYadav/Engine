@@ -1,5 +1,6 @@
 #pragma once 
 
+#include "Window.h"
 #include <GLFW/glfw3.h>
 #include "Shader.h"
 #include "imgui.h"
@@ -8,20 +9,20 @@
 #include "Scene/Scene.h"
 #include "Scene/Mesh.h"
 #include <vector>
-#include "Window.h"
 
 
 
 class Renderer {
 public:
-    Renderer( Window* activeWindowClass);
+    Renderer(Window* window);
     ~Renderer();
 
     void Clear();
 	void RenderTriangle();
-    void RenderImgui();
+    // void RenderImgui();
     void ReloadShader();
     Scene* getActiveScene();
+    int *PanelX,*PanelY;
 private:
     GLuint VAO, VBO;
     GLuint shaderProgram;
@@ -30,6 +31,6 @@ private:
     std::vector<Scene*> Scenes;
     GLFWwindow* window;
     Window * activeWindowClass;
-
+    
 };
 

@@ -1,5 +1,4 @@
-#ifndef APPLICATION_HPP
-#define APPLICATION_HPP
+#pragma once
 
 #include "Window.h"
 #include "Renderer.h"
@@ -24,4 +23,3 @@ private:
     void Render();
 };
 
-#endif 

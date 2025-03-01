@@ -1,7 +1,6 @@
 #include "Application.h"
 #include <iostream>
 
-// Constructor: Initialize subsystems
 Application::Application() {
     window = new Window(1280, 720, "OpenGL Engine");
 	renderer = new Renderer(window);
@@ -15,7 +14,6 @@ Application::~Application() {
     delete window;
 }
 
-// Main loop
 void Application::Run() {
     while (isRunning && !window->ShouldClose()) {
         ProcessInput();
@@ -24,12 +22,10 @@ void Application::Run() {
     }
 }
 
-// Process user input
 void Application::ProcessInput() {
     window->PollEvents();
 }
 
-// Update scene and UI
 void Application::Update() {
     uimanger->Update();
 }

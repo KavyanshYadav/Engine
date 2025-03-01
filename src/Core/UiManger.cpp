@@ -105,9 +105,7 @@ void ShowMeshTransformUI(Mesh* mesh) {
         }
 
         // Scale Controls
-        if (ImGui::DragFloat3("Scale", glm::value_ptr(scaleFactor), 0.1f, 0.1f, 10.0f)) {
-            mesh->Scale(scaleFactor);
-        }
+     
         if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.1f)) {
             mesh->SetPosition(position);
         }
@@ -124,6 +122,13 @@ void ShowMeshTransformUI(Mesh* mesh) {
 void UIManager::Render() {
     ImGui::Begin("Debug Info");
     ImGui::Text("OpenGL Rendering Engine");
+    if (ImGui::DragInt("ViewPortx", renderer->PanelX, 1, 0, 1000)) {
+       
+    }
+    if (ImGui::DragInt("ViewPortY", renderer->PanelY, 1, 0, 1000)) {
+       
+    }
+
     if (ImGui::Button("Recompile Shader")) {
         renderer->ReloadShader();
     }

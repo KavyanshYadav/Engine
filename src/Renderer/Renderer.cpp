@@ -23,8 +23,8 @@
 int windowWidth = 1280, windowHeight = 720;
 int panelWidth = 300, panelHeight = 150;
 
-Renderer::Renderer(Window *window){
-    if (!window->GetGLFWWindow()) {
+Renderer::Renderer(Window * window):activeWindowClass(window){
+    if (!window) {
         std::cerr << "GLFW window is null!" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -34,6 +34,8 @@ Renderer::Renderer(Window *window){
         exit(EXIT_FAILURE);
     }
 
+   PanelX = new int(350);
+   PanelY = new int(150);
     shader = new Shader("SHADERS/vertexShader.vert", "SHADERS/fragmentShader.frag");
     glEnable(GL_DEPTH_TEST);
 
@@ -98,8 +100,16 @@ void Renderer::RenderTriangle() {
 }
 
 void Renderer::Clear() {
-    // glViewport(panelWidth, panelHeight, activeWindowClass->getWindowSize().x- panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
+    std::cout << activeWindowClass->getWindowSize().x <<std::endl;
+    glViewport(*PanelX, *PanelY, activeWindowClass->getWindowSize().x- panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
     glEnable(GL_SCISSOR_TEST);
+    // glScissor(0, 0, panelWidth, windowHeight);
+    // glScissor(0, 0, panelWidth, windowHeight);
+    // glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    // glClear(GL_COLOR_BUFFER_BIT);
+    // glScissor(windowWidth - panelWidth, 0, panelWidth, windowHeight);
+    // glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST); 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
+ }
