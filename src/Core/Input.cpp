@@ -1,21 +1,32 @@
 #include "Input.h"
 #include "Renderer.h"
+#include "Logger.h"
 
 bool Input::firstMouse = true;
 float Input::lastX = 400.0f;
 float Input::lastY = 300.0f;
 float Input::mouseSensitivity = 0.1f;
+float Input::moveSpeed = 2.5f;  // Units per second
+float Input::lastFrame = 0.0f;  // For frame-independent movement
 
-Input::Input(Renderer* renderer) : renderer(renderer)
-{
+Input* Input::instance = nullptr;
 
+Input::Input(Renderer* renderer) : renderer(renderer) {
+    instance = this;  // Store instance pointer
 }
 
 Input::~Input(){
-    delete(renderer);
+    // Don't delete renderer here as it's managed elsewhere
 }
 
-void Input::MouseCallback(GLFWwindow* window, int button, int action, int mods) {
+void Input::HandleObjectSelection(GLFWwindow* window, int button, int action, int mods) {
+    auto& logger = Logger::GetInstance();
+    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    if (!renderer) {
+        logger.Critical("Renderer instance is null!");
+        return;
+    }
+    
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         double mouseX, mouseY;
         glfwGetCursorPos(window, &mouseX, &mouseY);
@@ -24,17 +35,33 @@ void Input::MouseCallback(GLFWwindow* window, int button, int action, int mods) 
         int width, height;
         glfwGetWindowSize(window, &width, &height);
 
+        // Get viewport dimensions
+        int viewportX = *renderer->PanelX;
+        int viewportY = *renderer->PanelY;
+        int viewportWidth = width - viewportX;
+        int viewportHeight = height - viewportY;
+
+        // Check if click is within viewport
+        if (mouseX < viewportX || mouseX > width || 
+            mouseY < viewportY || mouseY > height - viewportY) {
+            logger.Debug("Click outside viewport");
+            return;
+        }
+
         // Adjust coordinates for viewport offset
-        mouseX -= *renderer->PanelX;
-        mouseY -= *renderer->PanelY;
-        width -= *renderer->PanelX;
-        height -= *renderer->PanelY;
+        mouseX -= viewportX;
+        mouseY -= viewportY;
 
         // Convert to normalized device coordinates (-1 to 1)
-        float x = (2.0f * mouseX) / width - 1.0f;
-        float y = 1.0f - (2.0f * mouseY) / height;
+        float x = (2.0f * mouseX) / viewportWidth - 1.0f;
+        float y = 1.0f - (2.0f * mouseY) / viewportHeight;
         
         Scene* scene = renderer->getActiveScene();
+        
+        // Debug: Print number of objects in scene
+        auto sceneNodes = scene->GetSceneNodes();
+        logger.Debug("Number of objects in scene: ", sceneNodes.size());
+        
         glm::mat4 projection = scene->GetProjectionMatrix();
         glm::mat4 view = scene->GetViewMatrix();
         
@@ -53,42 +80,60 @@ void Input::MouseCallback(GLFWwindow* window, int button, int action, int mods) 
         glm::vec3 rayOrigin = scene->GetCameraPosition();
         
         // Debug output
-        std::cout << "Mouse: " << mouseX << ", " << mouseY << std::endl;
-        std::cout << "Ray Origin: " << rayOrigin.x << ", " << rayOrigin.y << ", " << rayOrigin.z << std::endl;
-        std::cout << "Ray Dir: " << rayDir.x << ", " << rayDir.y << ", " << rayDir.z << std::endl;
+        logger.Debug("Ray Casting Debug:");
+        logger.Debug("Click position (viewport): ", mouseX, ", ", mouseY);
+        logger.Debug("NDC Coordinates: ", x, ", ", y);
+        logger.Debug("Ray Origin: ", rayOrigin.x, ", ", rayOrigin.y, ", ", rayOrigin.z);
+        logger.Debug("Ray Direction: ", rayDir.x, ", ", rayDir.y, ", ", rayDir.z);
+        
+        // Debug: Print all object positions
+        logger.Debug("Scene Objects:");
+        for (auto* obj : sceneNodes) {
+            Mesh* mesh = static_cast<Mesh*>(obj);
+            glm::vec3 pos = mesh->GetPosition();
+            glm::vec3 scale = mesh->GetScale();
+            logger.Debug("Object at position: ", pos.x, ", ", pos.y, ", ", pos.z, 
+                        " with scale: ", scale.x, ", ", scale.y, ", ", scale.z);
+        }
         
         // Perform picking
         SceneObject* picked = scene->PickMesh(rayOrigin, rayDir);
         if (picked) {
             scene->SetActiveMesh(picked);
-            std::cout << "Picked mesh at " << picked << std::endl;
+            logger.Info("Picked mesh at ", picked);
+            
+            // Get picked object's position for debugging
+            Mesh* mesh = static_cast<Mesh*>(picked);
+            glm::vec3 pos = mesh->GetPosition();
+            logger.Debug("Picked mesh position: ", pos.x, ", ", pos.y, ", ", pos.z);
         } else {
             scene->SetActiveMesh(nullptr);
-            std::cout << "No mesh picked" << std::endl;
+            logger.Info("No mesh picked - Ray missed all objects");
         }
+        
+        logger.Debug("------------------------");
     }
 }
 
-void Input::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    // Get the user pointer which should be set to the Renderer
+void Input::HandleCameraZoom(GLFWwindow* window, double xoffset, double yoffset) {
     Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
     if (renderer) {
-        // Adjust zoom based on scroll direction
-        // yoffset is positive when scrolling up/away from user
-        float zoomDelta = static_cast<float>(yoffset) * 0.1f;  // Adjust sensitivity as needed
+        float zoomDelta = static_cast<float>(yoffset) * 0.1f;
         renderer->getActiveScene()->AdjustCameraZoom(zoomDelta);
     }
 }
 
-void Input::MouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
+void Input::HandleCameraRotation(GLFWwindow* window, double xpos, double ypos) {
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) != GLFW_PRESS) {
-        return;  // Only rotate when right mouse button is pressed
+        firstMouse = true;
+        return;
     }
 
     if (firstMouse) {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
+        return;
     }
 
     float xoffset = xpos - lastX;
@@ -102,29 +147,63 @@ void Input::MouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
     }
 }
 
-void Input::ProcessInput(GLFWwindow* window) {
-    glm::vec3 movement(0.0f);
+void Input::UpdateCameraMovement(GLFWwindow* window) {
+    // Calculate delta time
+    float currentFrame = static_cast<float>(glfwGetTime());
+    float deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
     
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        movement.z += 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        movement.z -= 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        movement.x -= 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        movement.x += 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        movement.y -= 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        movement.y += 1.0f;
+    glm::vec3 movement(0.0f);
+    float speed = moveSpeed * deltaTime; // Frame-independent movement speed
+    
+    Scene* scene = instance->renderer->getActiveScene();
+    glm::vec3 cameraPos = scene->GetCameraPosition();
+    glm::vec3 cameraTarget = scene->GetCameraTarget();
+    glm::vec3 forward = glm::normalize(cameraTarget - cameraPos);
+    glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
+    // Forward/Backward movement along camera direction
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        movement += forward;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        movement -= forward;
+
+    // Left/Right movement perpendicular to camera direction
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        movement -= right;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        movement += right;
+
+    // Up/Down movement along world up vector
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        movement -= up;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        movement += up;
+
+    // Sprint modifier
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        speed *= 2.0f;
+
+    // Apply movement if any key was pressed
     if (movement != glm::vec3(0.0f)) {
-        renderer->getActiveScene()->MoveCamera(glm::normalize(movement));
+        movement = glm::normalize(movement) * speed;
+        scene->MoveCamera(movement);
     }
+
+    // Handle escape key to close window
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
 }
 
-void Input::SetupCallbacks(GLFWwindow* window) {
-    // Set up scroll callback
-    glfwSetScrollCallback(window, ScrollCallback);
-    glfwSetCursorPosCallback(window, MouseMoveCallback);
+void Input::InitializeInputCallbacks(GLFWwindow* window) {
+    auto& logger = Logger::GetInstance();
+    logger.Info("Initializing input callbacks...");
+    
+    // Set up callbacks - note we're not setting window user pointer here anymore
+    glfwSetScrollCallback(window, HandleCameraZoom);
+    glfwSetCursorPosCallback(window, HandleCameraRotation);
+    glfwSetMouseButtonCallback(window, HandleObjectSelection);
+    
+    logger.Info("Callbacks initialized successfully");
 }

@@ -9,8 +9,10 @@
 #include "Scene/Scene.h"
 #include "Scene/Mesh.h"
 #include <vector>
+#include "Input.h"
+#include <glad/glad.h>
 
-
+class Input;  // Forward declaration
 
 class Renderer {
 public:
@@ -22,7 +24,14 @@ public:
     // void RenderImgui();
     void ReloadShader();
     Scene* getActiveScene();
+    Shader* GetShader() { return shader; }
     int *PanelX,*PanelY;
+
+    // Axis lines
+    void InitializeAxisLines();
+    void RenderAxisLines();
+    void CleanupAxisLines();
+
 private:
     GLuint VAO, VBO;
     GLuint shaderProgram;
@@ -31,6 +40,13 @@ private:
     std::vector<Scene*> Scenes;
     GLFWwindow* window;
     Window * activeWindowClass;
-    
+    Input* input;  // Add Input member
+
+    // Axis lines buffers
+    struct {
+        GLuint VAO, VBO;
+        Shader* shader;
+        bool initialized = false;
+    } axisLines;
 };
 

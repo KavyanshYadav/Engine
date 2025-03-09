@@ -2,13 +2,25 @@
 #include "Scene/Mesh.h"
 #include <iostream>
 
-Mesh::Mesh(Shader *shader):shader(shader) {
+Mesh::Mesh(Shader* shader) : shader(shader) {
     position = glm::vec3(0.0f);
-    rotationAngle = 0.0f;
-    rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);  
+    rotation = glm::vec3(0.0f);
     scale = glm::vec3(1.0f);
-    // rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); 
-    UpdateModelMatrix();
+    modelMatrix = glm::mat4(1.0f);
+    
+    // Initialize default values
+    name = "New Mesh";
+    layer = MeshLayer::Default;
+    isVisible = true;
+    isStatic = false;
+    castShadows = true;
+    receiveShadows = true;
+    isDynamic = false;
+    isAnimated = false;
+    mass = 1.0f;
+    parent = nullptr;
+    animationTime = 0.0f;
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 }
@@ -19,7 +31,9 @@ Mesh::~Mesh() {
 }
 
 void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsigned int>& indices) {
-    indexCount = indices.size();
+    this->vertices = vertices;
+    this->indices = indices;
+    indexCount = static_cast<GLuint>(indices.size());
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -27,20 +41,16 @@ void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsign
 
     glBindVertexArray(VAO);
 
-    // Upload vertex data
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
-    // Upload index data
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    // Define vertex attributes (position only, 3 floats per vertex)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glBindVertexArray(0);
-
+    UpdateStats();
 }
 
 void Mesh::LoadObj(const std::string& filename) {
@@ -98,35 +108,30 @@ void Mesh::LoadObj(const std::string& filename) {
 
 }
 
+void Mesh::Update(float deltaTime) {
+    if (isAnimated) {
+        UpdateAnimation(deltaTime);
+    }
+}
+
+void Mesh::Render(Shader* shader) {
+    if (!isVisible) return;
+
+    shader->Use();
+    shader->SetUniformMat4("model", modelMatrix);
+    
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
 
 void Mesh::Translate(const glm::vec3& translation) {
     position += translation;
     UpdateModelMatrix();
 }
-void Mesh::SetPosition(const glm::vec3& newPosition) {
-    position = newPosition;
-    UpdateModelMatrix();
-}
-
-void Mesh::SetRotation(const glm::vec3& eulerAngles) {
-    // rotation = glm::quat(glm::radians(eulerAngles)); 
-    UpdateModelMatrix();
-}
-
-void Mesh::SetRotationQuat(const glm::quat& quatRotation) {
-    // rotation = quatRotation;
-    UpdateModelMatrix();
-}
-
-void Mesh::SetScale(const glm::vec3& newScale) {
-    scale = newScale;
-    UpdateModelMatrix();
-}
-
 
 void Mesh::Rotate(float angle, const glm::vec3& axis) {
-    rotationAngle += angle;
-    rotationAxis = axis;
+    rotation += axis * angle;
     UpdateModelMatrix();
 }
 
@@ -135,28 +140,88 @@ void Mesh::Scale(const glm::vec3& scaleFactor) {
     UpdateModelMatrix();
 }
 
+void Mesh::SetPosition(const glm::vec3& newPosition) {
+    position = newPosition;
+    UpdateModelMatrix();
+}
+
+void Mesh::SetRotation(const glm::vec3& eulerAngles) {
+    rotation = eulerAngles;
+    UpdateModelMatrix();
+}
+
+void Mesh::SetRotationQuat(const glm::quat& quatRotation) {
+    rotation = glm::eulerAngles(quatRotation);
+    UpdateModelMatrix();
+}
+
+void Mesh::SetScale(const glm::vec3& newScale) {
+    scale = newScale;
+    UpdateModelMatrix();
+}
 
 void Mesh::UpdateModelMatrix() {
     modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::translate(modelMatrix, position);
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), rotationAxis);
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
     modelMatrix = glm::scale(modelMatrix, scale);
 }
 
-
-
-void Mesh::Update(float deltaTime) {
-
+void Mesh::UpdateStats() {
+    stats.vertexCount = vertices.size() / 3;  // Assuming 3 components per vertex
+    stats.triangleCount = indices.size() / 3;
+    stats.materialCount = materials.size();
+    
+    // Calculate bounding sphere radius
+    float maxDistSq = 0.0f;
+    for (size_t i = 0; i < vertices.size(); i += 3) {
+        glm::vec3 vertex(vertices[i], vertices[i + 1], vertices[i + 2]);
+        float distSq = glm::dot(vertex, vertex);  // Calculate squared length using dot product
+        maxDistSq = std::max(maxDistSq, distSq);
+    }
+    stats.boundingSphereRadius = std::sqrt(maxDistSq);
 }
 
-void Mesh::Render(Shader *shader1) {
-    // for (int i = 0; i < 4; ++i) {
-    //     glm::vec4 row = glm::row(modelMatrix, i);
-    //     std::cout << row.x << " " << row.y << " " << row.z << " " << row.w << std::endl;
-    // }
-    shader1->Use();
-    shader1->SetUniformMat4("model",modelMatrix);
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);  
-    glBindVertexArray(0);
+void Mesh::AddMaterial(Material* material) {
+    materials.push_back(material);
+    UpdateStats();
+}
+
+void Mesh::RemoveMaterial(Material* material) {
+    auto it = std::find(materials.begin(), materials.end(), material);
+    if (it != materials.end()) {
+        materials.erase(it);
+        UpdateStats();
+    }
+}
+
+void Mesh::SetParent(Mesh* newParent) {
+    if (parent) {
+        parent->RemoveChild(this);
+    }
+    parent = newParent;
+    if (parent) {
+        parent->AddChild(this);
+    }
+}
+
+void Mesh::AddChild(Mesh* child) {
+    if (child && std::find(children.begin(), children.end(), child) == children.end()) {
+        children.push_back(child);
+    }
+}
+
+void Mesh::RemoveChild(Mesh* child) {
+    auto it = std::find(children.begin(), children.end(), child);
+    if (it != children.end()) {
+        children.erase(it);
+    }
+}
+
+void Mesh::UpdateAnimation(float deltaTime) {
+    if (!isAnimated) return;
+    animationTime += deltaTime;
+    // Animation implementation will go here
 }

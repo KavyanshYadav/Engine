@@ -35,11 +35,14 @@ Renderer::Renderer(Window * window):activeWindowClass(window){
         exit(EXIT_FAILURE);
     }
 
+    // Set up input system first
+    input = new Input(this);
+    
     // Set the window user pointer to this renderer instance
     glfwSetWindowUserPointer(window->GetGLFWWindow(), this);
     
-    // Set up input callbacks
-    Input::SetupCallbacks(window->GetGLFWWindow());
+    // Initialize input callbacks after setting user pointer
+    input->InitializeInputCallbacks(window->GetGLFWWindow());
 
    PanelX = new int(350);
    PanelY = new int(150);
@@ -75,6 +78,8 @@ std::vector<unsigned int> triangleIndices = {
     Sqaure->Translate(glm::vec3(0.1f,0.0f,0.0f));
     this->shaderProgram = shader->CreateShaderProgram();
 
+    // Initialize axis lines
+    InitializeAxisLines();
 }
 
 
@@ -90,6 +95,9 @@ Renderer::~Renderer() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
+
+    // Cleanup axis lines
+    CleanupAxisLines();
 }
 Scene* Renderer::getActiveScene()
 {
@@ -110,7 +118,7 @@ void Renderer::RenderTriangle() {
 }
 
 void Renderer::Clear() {
-    std::cout << activeWindowClass->getWindowSize().x <<std::endl;
+    // std::cout << activeWindowClass->getWindowSize().x <<std::endl;
     
     // First clear the entire window with a darker color
     glDisable(GL_SCISSOR_TEST);
@@ -123,4 +131,77 @@ void Renderer::Clear() {
     glScissor(*PanelX, *PanelY, activeWindowClass->getWindowSize().x - panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
     glClearColor(0.283f, 0.283f, 0.283f, 1.0f);  // Blender-like grey for viewport
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Render the axis lines after clearing
+    RenderAxisLines();
+}
+
+void Renderer::InitializeAxisLines() {
+    if (axisLines.initialized) return;
+
+    // Create and compile the axis shader
+    axisLines.shader = new Shader("SHADERS/axis.vert", "SHADERS/axis.frag");
+
+    // Create vertex data for infinite axis lines
+    // Each line has two vertices with positions and colors
+    float axisVertices[] = {
+        // Positions          // Colors
+        -1000.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // X axis (red)
+         1000.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        
+        0.0f, -1000.0f, 0.0f, 0.0f, 1.0f, 0.0f,  // Y axis (green)
+        0.0f,  1000.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        
+        0.0f, 0.0f, -1000.0f, 0.0f, 0.0f, 1.0f,  // Z axis (blue)
+        0.0f, 0.0f,  1000.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    // Create and bind VAO and VBO
+    glGenVertexArrays(1, &axisLines.VAO);
+    glGenBuffers(1, &axisLines.VBO);
+
+    glBindVertexArray(axisLines.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, axisLines.VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(axisVertices), axisVertices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    // Color attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    axisLines.initialized = true;
+}
+
+void Renderer::RenderAxisLines() {
+    if (!axisLines.initialized) {
+        InitializeAxisLines();
+    }
+
+    // Enable line width (if supported by your graphics driver)
+    glLineWidth(2.0f);
+
+    // Use the axis shader
+
+
+    // Set view and projection matrices
+    Scene* scene = getActiveScene();
+
+    // Draw the axis lines
+    glBindVertexArray(axisLines.VAO);
+    glDrawArrays(GL_LINES, 0, 6); // 3 lines, 2 vertices each
+
+    // Reset line width
+    glLineWidth(1.0f);
+}
+
+void Renderer::CleanupAxisLines() {
+    if (axisLines.initialized) {
+        glDeleteVertexArrays(1, &axisLines.VAO);
+        glDeleteBuffers(1, &axisLines.VBO);
+        delete axisLines.shader;
+        axisLines.initialized = false;
+    }
 }
