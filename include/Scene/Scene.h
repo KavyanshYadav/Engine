@@ -16,10 +16,30 @@ public:
     void Render(Shader *shader);
     void SetCameraView(glm::vec3 position, glm::vec3 target, glm::vec3 up);
     void SetProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
-    std::vector<SceneObject*> GetSceneNodes ();
+    void AdjustCameraZoom(float zoomDelta);
+    void RotateCamera(float yaw, float pitch);
+    void MoveCamera(const glm::vec3& direction);
+    std::vector<SceneObject*> GetSceneNodes();
+    
+    // Mesh picking related methods
+    void SetActiveMesh(SceneObject* mesh) { activeMesh = mesh; }
+    SceneObject* GetActiveMesh() const { return activeMesh; }
+    SceneObject* PickMesh(const glm::vec3& rayOrigin, const glm::vec3& rayDir);
+    glm::mat4 GetViewMatrix() const { return viewMatrix; }
+    glm::mat4 GetProjectionMatrix() const { return projectionMatrix; }
+    glm::vec3 GetCameraPosition() const { return cameraPosition; }
+    glm::vec3 GetCameraTarget() const { return cameraTarget; }
 
 private:
     std::vector<SceneObject*> objects;
+    SceneObject* activeMesh;  // Currently selected mesh
     glm::mat4 viewMatrix;
     glm::mat4 projectionMatrix;
+    glm::vec3 cameraPosition;
+    glm::vec3 cameraTarget;
+    glm::vec3 cameraUp;
+    float zoomLevel;
+    float yaw;   // Camera rotation around Y axis
+    float pitch; // Camera rotation around X axis
+    void UpdateCameraVectors();
 };

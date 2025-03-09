@@ -19,9 +19,13 @@ Window::Window(int width, int height, const std::string& title) {
         exit(EXIT_FAILURE);
     }
 
+   
+
     glfwMakeContextCurrent(window);
+   
     
 }
+
 
 glm::vec2 Window::getWindowSize(){
     int height,width = 0;

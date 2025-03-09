@@ -43,6 +43,62 @@ void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsign
 
 }
 
+void Mesh::LoadObj(const std::string& filename) {
+    // tinyobj::attrib_t attrib;
+    // std::vector<tinyobj::shape_t> shapes;
+    // std::vector<tinyobj::material_t> materials;
+    // std::string warn, err;
+
+    // Load OBJ file
+    // bool success = tinyobj::LoadObj()
+    // if (!success) {
+    //     std::cerr << "Error loading OBJ: " << err << std::endl;
+   
+    // }
+
+    // if (!warn.empty()) {
+    //     std::cout << "Warning: " << warn << std::endl;
+    // }
+
+    // std::vector<float> vertices;
+    // std::vector<unsigned int> indices;
+    // std::unordered_map<std::string, unsigned int> uniqueVertices;
+
+    // for (const auto& shape : shapes) {
+    //     for (const auto& index : shape.mesh.indices) {
+    //         float vx = attrib.vertices[3 * index.vertex_index + 0];
+    //         float vy = attrib.vertices[3 * index.vertex_index + 1];
+    //         float vz = attrib.vertices[3 * index.vertex_index + 2];
+
+    //         float nx = 0, ny = 0, nz = 0;
+    //         if (!attrib.normals.empty() && index.normal_index >= 0) {
+    //             nx = attrib.normals[3 * index.normal_index + 0];
+    //             ny = attrib.normals[3 * index.normal_index + 1];
+    //             nz = attrib.normals[3 * index.normal_index + 2];
+    //         }
+
+    //         float tx = 0, ty = 0;
+    //         if (!attrib.texcoords.empty() && index.texcoord_index >= 0) {
+    //             tx = attrib.texcoords[2 * index.texcoord_index + 0];
+    //             ty = attrib.texcoords[2 * index.texcoord_index + 1];
+    //         }
+
+    //         std::string key = std::to_string(vx) + "_" + std::to_string(vy) + "_" + std::to_string(vz) +
+    //                           "_" + std::to_string(nx) + "_" + std::to_string(ny) + "_" + std::to_string(nz) +
+    //                           "_" + std::to_string(tx) + "_" + std::to_string(ty);
+
+    //         if (uniqueVertices.count(key) == 0) {
+    //             uniqueVertices[key] = static_cast<unsigned int>(vertices.size() / 8);
+    //             vertices.insert(vertices.end(), {vx, vy, vz, nx, ny, nz, tx, ty});
+    //         }
+
+    //         indices.push_back(uniqueVertices[key]);
+    //     }
+    // }
+
+}
+
+
 void Mesh::Translate(const glm::vec3& translation) {
     position += translation;
     UpdateModelMatrix();

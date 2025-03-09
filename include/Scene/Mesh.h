@@ -19,6 +19,7 @@ public:
     //     const std::vector<glm::vec2>& texCoords, 
     //     const std::vector<glm::vec3>& tangents, 
     //     const std::vector<glm::vec3>& bitangents);
+    void LoadObj(const std::string& filename);
 
     void LoadMesh(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
     void Update(float deltaTime) override;

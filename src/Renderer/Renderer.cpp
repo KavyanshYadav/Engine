@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include "Renderer.h"
+#include "Input.h"
 #include <iostream>
 
 
@@ -34,6 +35,12 @@ Renderer::Renderer(Window * window):activeWindowClass(window){
         exit(EXIT_FAILURE);
     }
 
+    // Set the window user pointer to this renderer instance
+    glfwSetWindowUserPointer(window->GetGLFWWindow(), this);
+    
+    // Set up input callbacks
+    Input::SetupCallbacks(window->GetGLFWWindow());
+
    PanelX = new int(350);
    PanelY = new int(150);
     shader = new Shader("SHADERS/vertexShader.vert", "SHADERS/fragmentShader.frag");
@@ -58,9 +65,12 @@ std::vector<unsigned int> triangleIndices = {
 
     Scene* scene = new Scene();
     Mesh* Sqaure =  new Mesh(shader);
+    Mesh* Sqaure2 =  new Mesh(shader);
 
+    Sqaure2->LoadMesh(triangleVertices,triangleIndices);
     Sqaure->LoadMesh(triangleVertices,triangleIndices);
     scene->AddObject(Sqaure);
+    scene->AddObject(Sqaure2);
     Scenes.push_back(scene);
     Sqaure->Translate(glm::vec3(0.1f,0.0f,0.0f));
     this->shaderProgram = shader->CreateShaderProgram();
@@ -101,15 +111,16 @@ void Renderer::RenderTriangle() {
 
 void Renderer::Clear() {
     std::cout << activeWindowClass->getWindowSize().x <<std::endl;
-    glViewport(*PanelX, *PanelY, activeWindowClass->getWindowSize().x- panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
-    glEnable(GL_SCISSOR_TEST);
-    // glScissor(0, 0, panelWidth, windowHeight);
-    // glScissor(0, 0, panelWidth, windowHeight);
-    // glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    // glScissor(windowWidth - panelWidth, 0, panelWidth, windowHeight);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    glDisable(GL_SCISSOR_TEST); 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    
+    // First clear the entire window with a darker color
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0.15f, 0.15f, 0.15f, 1.0f);  // Darker grey for window background
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
- }
+    
+    // Then set up and clear the viewport with a different color
+    glViewport(*PanelX, *PanelY, activeWindowClass->getWindowSize().x - panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(*PanelX, *PanelY, activeWindowClass->getWindowSize().x - panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
+    glClearColor(0.283f, 0.283f, 0.283f, 1.0f);  // Blender-like grey for viewport
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
