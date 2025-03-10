@@ -3,8 +3,8 @@
 !include "FileFunc.nsh"
 
 ; General
-Name "3D Engine - Prototype 0.0.1"
-OutFile "3DEngine-0.0.1-Setup.exe"
+Name "3D Engine"
+OutFile "EngineSetup.exe"
 InstallDir "$PROGRAMFILES\3DEngine"
 InstallDirRegKey HKCU "Software\3DEngine" ""
 
@@ -12,15 +12,11 @@ InstallDirRegKey HKCU "Software\3DEngine" ""
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
-!define MUI_WELCOMEFINISHPAGE_BITMAP "${NSISDIR}\Contrib\Graphics\Wizard\win.bmp"
-!define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_BITMAP "${NSISDIR}\Contrib\Graphics\Header\win.bmp"
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY
-!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
@@ -30,24 +26,14 @@ InstallDirRegKey HKCU "Software\3DEngine" ""
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
 
-; Version Information
-VIProductVersion "0.0.1.0"
-VIAddVersionKey "ProductName" "3D Engine"
-VIAddVersionKey "Comments" "Modern OpenGL-based 3D Engine"
-VIAddVersionKey "CompanyName" "3D Engine"
-VIAddVersionKey "FileVersion" "0.0.1"
-VIAddVersionKey "ProductVersion" "0.0.1"
-VIAddVersionKey "LegalCopyright" "© 2024 3D Engine"
-VIAddVersionKey "FileDescription" "3D Engine Installer"
-
-Section "Core Files (required)" SEC01
-    SectionIn RO
+Section "MainSection" SEC01
     SetOutPath "$INSTDIR"
     SetOverwrite ifnewer
     
     ; Create directories
     CreateDirectory "$INSTDIR\bin"
     CreateDirectory "$INSTDIR\SHADERS"
+    CreateDirectory "$INSTDIR\resources"
     CreateDirectory "$INSTDIR\config"
     
     ; Copy executable and DLLs
@@ -67,32 +53,18 @@ Section "Core Files (required)" SEC01
     SetOutPath "$INSTDIR\config"
     File /nonfatal "dist\config\*.ini"
     
-    ; Copy version info
+    ; Copy documentation
     SetOutPath "$INSTDIR"
-    File "dist\version.txt"
+    File "dist\README.md"
+    File "dist\LICENSE"
     
     ; Create shortcuts with working directory set to bin
     CreateDirectory "$SMPROGRAMS\3DEngine"
     SetOutPath "$INSTDIR\bin"
-    CreateShortCut "$SMPROGRAMS\3DEngine\3D Engine.lnk" "$INSTDIR\bin\OpenGLRenderer.exe"
-    CreateShortCut "$DESKTOP\3D Engine.lnk" "$INSTDIR\bin\OpenGLRenderer.exe"
-SectionEnd
-
-Section "Documentation" SEC02
-    SetOutPath "$INSTDIR\docs"
-    File "dist\docs\README.md"
-    File "dist\docs\LICENSE"
-    File "dist\docs\RELEASE_NOTES.md"
+    CreateShortCut "$SMPROGRAMS\3DEngine\3DEngine.lnk" "$INSTDIR\bin\OpenGLRenderer.exe"
+    CreateShortCut "$DESKTOP\3DEngine.lnk" "$INSTDIR\bin\OpenGLRenderer.exe"
     
-    CreateShortCut "$SMPROGRAMS\3DEngine\Documentation.lnk" "$INSTDIR\docs\RELEASE_NOTES.md"
-SectionEnd
-
-Section "Screenshots" SEC03
-    SetOutPath "$INSTDIR\screenshots"
-    File "dist\screenshots\*.png"
-SectionEnd
-
-Section -Post
+    ; Write uninstaller
     SetOutPath "$INSTDIR"
     WriteUninstaller "$INSTDIR\Uninstall.exe"
     
@@ -102,17 +74,7 @@ Section -Post
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine" "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine" "Publisher" "3D Engine"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine" "DisplayIcon" "$INSTDIR\bin\OpenGLRenderer.exe"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine" "DisplayVersion" "0.0.1"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine" "VersionMajor" "0"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine" "VersionMinor" "0"
 SectionEnd
-
-; Section descriptions
-!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Core engine files, including executable, shaders, and required DLLs."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Documentation files including README, LICENSE, and Release Notes."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Screenshot examples of the engine in action."
-!insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Section "Uninstall"
     ; Remove symbolic link first
@@ -121,18 +83,17 @@ Section "Uninstall"
     ; Remove directories and files
     RMDir /r "$INSTDIR\bin"
     RMDir /r "$INSTDIR\SHADERS"
+    RMDir /r "$INSTDIR\resources"
     RMDir /r "$INSTDIR\config"
-    RMDir /r "$INSTDIR\docs"
-    RMDir /r "$INSTDIR\screenshots"
-    Delete "$INSTDIR\version.txt"
+    Delete "$INSTDIR\README.md"
+    Delete "$INSTDIR\LICENSE"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"
     
     ; Remove shortcuts
-    Delete "$SMPROGRAMS\3DEngine\3D Engine.lnk"
-    Delete "$SMPROGRAMS\3DEngine\Documentation.lnk"
+    Delete "$SMPROGRAMS\3DEngine\3DEngine.lnk"
     RMDir "$SMPROGRAMS\3DEngine"
-    Delete "$DESKTOP\3D Engine.lnk"
+    Delete "$DESKTOP\3DEngine.lnk"
     
     ; Remove registry keys
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\3DEngine"

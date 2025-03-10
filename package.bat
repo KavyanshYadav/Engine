@@ -36,21 +36,6 @@ if not "!MISSING_SHADERS!"=="" (
     exit /b 1
 )
 
-:: Check for screenshots
-if not exist screenshots\screenshot1.png (
-    echo WARNING: screenshot1.png not found in screenshots directory.
-    echo Please ensure you have screenshots for the release.
-    choice /C YN /M "Continue without screenshots?"
-    if errorlevel 2 exit /b 1
-)
-
-if not exist screenshots\screenshot2.png (
-    echo WARNING: screenshot2.png not found in screenshots directory.
-    echo Please ensure you have screenshots for the release.
-    choice /C YN /M "Continue without screenshots?"
-    if errorlevel 2 exit /b 1
-)
-
 echo All required files found. Creating distribution package...
 
 :: Create directories
@@ -58,8 +43,6 @@ mkdir dist 2>nul
 mkdir dist\bin 2>nul
 mkdir dist\SHADERS 2>nul
 mkdir dist\config 2>nul
-mkdir dist\screenshots 2>nul
-mkdir dist\docs 2>nul
 
 :: Copy executable
 echo Copying executable...
@@ -75,27 +58,16 @@ echo Copying shader files...
 copy /Y SHADERS\*.vert dist\SHADERS\
 copy /Y SHADERS\*.frag dist\SHADERS\
 
-:: Copy screenshots
-echo Copying screenshots...
-if exist screenshots\*.png copy /Y screenshots\*.png dist\screenshots\
-
 :: Create config directory and default config
 echo Creating default configuration...
 echo [System]> dist\config\engine_config.ini
 echo ConfigVersion=1.0>> dist\config\engine_config.ini
 echo LastRun=%date%>> dist\config\engine_config.ini
-echo Version=0.0.1>> dist\config\engine_config.ini
 
 :: Copy documentation
 echo Copying documentation...
-if exist README.md copy /Y README.md dist\docs\
-if exist LICENSE copy /Y LICENSE dist\docs\
-if exist RELEASE_NOTES.md copy /Y RELEASE_NOTES.md dist\docs\
-
-:: Create version info file
-echo Creating version info...
-echo 3D Engine - Prototype 0.0.1> dist\version.txt
-echo Built on: %date% %time%>> dist\version.txt
+if exist README.md copy /Y README.md dist\
+if exist LICENSE copy /Y LICENSE dist\
 
 :: Create symbolic link
 echo Creating symbolic link for SHADERS...
@@ -105,8 +77,6 @@ cd ..\..
 
 echo.
 echo Distribution package created successfully in 'dist' folder.
-echo Version: Prototype - 0.0.1
-echo Build date: %date%
 echo.
 echo NOTE: The SHADERS folder must be present in the same directory as the executable
 echo      or in the working directory when running the application.
