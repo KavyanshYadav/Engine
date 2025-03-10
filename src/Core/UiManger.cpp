@@ -296,9 +296,9 @@ void UIManager::RenderPropertiesPanel() {
         // Transform section
         if (ImGui::TreeNode("Transform")) {
             glm::vec3 position = mesh->GetPosition();
-        if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.1f)) {
-            mesh->SetPosition(position);
-        }
+            if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.1f)) {
+                mesh->SetPosition(position);
+            }
 
             glm::vec3 rotation = mesh->GetRotation();
             if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 1.0f)) {
@@ -307,8 +307,107 @@ void UIManager::RenderPropertiesPanel() {
 
             glm::vec3 scale = mesh->GetScale();
             if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.1f)) {
-            mesh->SetScale(scale);
+                mesh->SetScale(scale);
+            }
+
+            ImGui::TreePop();
         }
+
+        // Materials section
+        if (ImGui::TreeNode("Materials")) {
+            const auto& materials = mesh->GetMaterials();
+            
+            if (materials.empty()) {
+                ImGui::Text("No materials assigned");
+                if (ImGui::Button("Add Material")) {
+                    Material* newMaterial = new Material("New Material");
+                    mesh->AddMaterial(newMaterial);
+                }
+            } else {
+                for (size_t i = 0; i < materials.size(); i++) {
+                    Material* material = materials[i];
+                    if (ImGui::TreeNode(("Material " + std::to_string(i)).c_str())) {
+                        // Material name
+                        static char materialNameBuf[256];
+                        strncpy(materialNameBuf, material->GetName().c_str(), sizeof(materialNameBuf) - 1);
+                        if (ImGui::InputText("Name", materialNameBuf, sizeof(materialNameBuf))) {
+                            material->SetName(materialNameBuf);
+                        }
+
+                        // Albedo color
+                        glm::vec3 albedo = material->GetAlbedo();
+                        if (ImGui::ColorEdit3("Albedo", glm::value_ptr(albedo))) {
+                            material->SetAlbedo(albedo);
+                        }
+
+                        // Metallic
+                        float metallic = material->GetMetallic();
+                        if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) {
+                            material->SetMetallic(metallic);
+                        }
+
+                        // Roughness
+                        float roughness = material->GetRoughness();
+                        if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) {
+                            material->SetRoughness(roughness);
+                        }
+
+                        // Ambient Occlusion
+                        float ao = material->GetAO();
+                        if (ImGui::SliderFloat("Ambient Occlusion", &ao, 0.0f, 1.0f)) {
+                            material->SetAO(ao);
+                        }
+
+                        // Emissive color
+                        glm::vec3 emissive = material->GetEmissive();
+                        if (ImGui::ColorEdit3("Emissive", glm::value_ptr(emissive))) {
+                            material->SetEmissive(emissive);
+                        }
+
+                        // Emissive strength
+                        float emissiveStrength = material->GetEmissiveStrength();
+                        if (ImGui::SliderFloat("Emissive Strength", &emissiveStrength, 0.0f, 10.0f)) {
+                            material->SetEmissiveStrength(emissiveStrength);
+                        }
+
+                        // Material presets
+                        if (ImGui::Button("Metal")) {
+                            material->SetAlbedo(glm::vec3(0.95f, 0.95f, 0.95f));
+                            material->SetMetallic(1.0f);
+                            material->SetRoughness(0.2f);
+                            material->SetAO(1.0f);
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Plastic")) {
+                            material->SetAlbedo(glm::vec3(0.9f, 0.9f, 0.9f));
+                            material->SetMetallic(0.0f);
+                            material->SetRoughness(0.3f);
+                            material->SetAO(1.0f);
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Glass")) {
+                            material->SetAlbedo(glm::vec3(0.95f, 0.95f, 0.95f));
+                            material->SetMetallic(0.0f);
+                            material->SetRoughness(0.05f);
+                            material->SetAO(1.0f);
+                        }
+
+                        // Remove material button
+                        if (ImGui::Button("Remove Material")) {
+                            mesh->RemoveMaterial(material);
+                            delete material;
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
+            }
+
+            // Add material button
+            if (ImGui::Button("Add Material")) {
+                Material* newMaterial = new Material("New Material");
+                mesh->AddMaterial(newMaterial);
+            }
 
             ImGui::TreePop();
         }
@@ -379,21 +478,6 @@ void UIManager::RenderPropertiesPanel() {
             ImGui::Text("Triangles: %d", stats.triangleCount);
             ImGui::Text("Materials: %d", stats.materialCount);
             ImGui::Text("Bounding Sphere Radius: %.2f", stats.boundingSphereRadius);
-            ImGui::TreePop();
-        }
-
-        // Materials section
-        if (ImGui::TreeNode("Materials")) {
-            const auto& materials = mesh->GetMaterials();
-            for (size_t i = 0; i < materials.size(); i++) {
-                if (ImGui::TreeNode(("Material " + std::to_string(i)).c_str())) {
-                    // Material properties will be added here
-                    ImGui::TreePop();
-                }
-            }
-            if (ImGui::Button("Add Material")) {
-                // Material creation logic will be added here
-            }
             ImGui::TreePop();
         }
 
@@ -1615,7 +1699,9 @@ std::string UIManager::GetFileIcon(const std::filesystem::path& path) {
     else if (ext == ".cpp" || ext == ".h") {
         return "💻";  // Source code
     }
-    return "📄";  // Default file icon
+    return "as"; 
+    
+     // Default file icon
 }
 
 void UIManager::NavigateToDirectory(const std::string& path) {

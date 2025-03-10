@@ -25,6 +25,9 @@ public:
     float GetEmissiveStrength() const { return emissiveStrength; }
     const std::string& GetName() const { return name; }
 
+    // Setters
+    void SetName(const std::string& newName) { name = newName; }
+
     // Apply material properties to shader
     void Apply(Shader* shader);
 
