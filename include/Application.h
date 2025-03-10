@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Renderer.h"
 #include "UiManger.h"
+#include "Input.h"
 
 class Application {
 public:
@@ -15,7 +16,7 @@ private:
     Window* window;
     Renderer* renderer;
     UIManager * uimanger;
-
+    Input* input;
     bool isRunning;
 
     void ProcessInput();

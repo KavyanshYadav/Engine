@@ -5,6 +5,7 @@ Application::Application() {
     window = new Window(1280, 720, "OpenGL Engine");
 	renderer = new Renderer(window);
     uimanger = new UIManager(window->GetGLFWWindow(),renderer);
+    input = new Input(renderer);
     isRunning = true;
 }
 
@@ -12,6 +13,7 @@ Application::Application() {
 Application::~Application() {
     delete renderer;
     delete window;
+    delete input;
 }
 
 void Application::Run() {
@@ -24,6 +26,7 @@ void Application::Run() {
 
 void Application::ProcessInput() {
     window->PollEvents();
+    input->UpdateCameraMovement(window->GetGLFWWindow());
 }
 
 void Application::Update() {

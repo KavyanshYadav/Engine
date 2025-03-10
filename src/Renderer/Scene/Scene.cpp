@@ -67,7 +67,7 @@ void Scene::Update(float deltaTime) {
 
 void Scene::AdjustCameraZoom(float zoomDelta) {
     // Adjust zoom level with some constraints
-    zoomLevel = glm::clamp(zoomLevel - zoomDelta, 1.0f, 10.0f);
+    zoomLevel = glm::clamp(zoomLevel - zoomDelta, 0.5f, 20.0f);  // Increased range for more zoom flexibility
     
     // Calculate new camera position based on zoom level
     glm::vec3 direction = glm::normalize(cameraPosition - cameraTarget);
@@ -89,14 +89,8 @@ void Scene::RotateCamera(float deltaYaw, float deltaPitch) {
 
 void Scene::MoveCamera(const glm::vec3& direction) {
     float speed = 0.1f; // Adjust movement speed as needed
-    glm::vec3 front = glm::normalize(cameraTarget - cameraPosition);
-    glm::vec3 right = glm::normalize(glm::cross(front, cameraUp));
-    
-    cameraPosition += direction.z * front * speed;
-    cameraPosition += direction.x * right * speed;
-    cameraPosition += direction.y * cameraUp * speed;
-    
-    cameraTarget = cameraPosition + front;
+    cameraPosition += direction * speed;
+    cameraTarget += direction * speed;
     UpdateCameraVectors();
 }
 

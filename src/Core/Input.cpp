@@ -8,6 +8,7 @@ float Input::lastY = 300.0f;
 float Input::mouseSensitivity = 0.1f;
 float Input::moveSpeed = 2.5f;  // Units per second
 float Input::lastFrame = 0.0f;  // For frame-independent movement
+float Input::sprintMultiplier = 5.0f;  // Increased from 2.0f to 5.0f for faster sprint
 
 Input* Input::instance = nullptr;
 
@@ -119,6 +120,10 @@ void Input::HandleCameraZoom(GLFWwindow* window, double xoffset, double yoffset)
     Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
     if (renderer) {
         float zoomDelta = static_cast<float>(yoffset) * 0.1f;
+        // Apply sprint multiplier to zoom speed when Shift is pressed
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+            zoomDelta *= sprintMultiplier;
+        }
         renderer->getActiveScene()->AdjustCameraZoom(zoomDelta);
     }
 }
@@ -183,7 +188,7 @@ void Input::UpdateCameraMovement(GLFWwindow* window) {
 
     // Sprint modifier
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        speed *= 2.0f;
+        speed *= sprintMultiplier;
 
     // Apply movement if any key was pressed
     if (movement != glm::vec3(0.0f)) {

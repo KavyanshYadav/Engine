@@ -20,7 +20,9 @@ private:
    static float mouseSensitivity;
    static float moveSpeed;     // Movement speed in units per second
    static float lastFrame;     // Last frame time for movement calculations
-   static Input* instance;  // Static instance pointer
+   static float sprintMultiplier;  // Added sprint multiplier
+   static Input* instance; 
+ // Static instance pointer
 public:
     Input(Renderer *renderer);
     ~Input();
