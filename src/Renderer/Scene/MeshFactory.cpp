@@ -43,37 +43,38 @@ Mesh* MeshFactory::CreateCylinder(Shader* shader, float radius, float height, in
 
 std::vector<float> MeshFactory::GetCubeVertices() {
     return {
-        // Front face
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
+        // Front face         // Colors
+        -0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f,  // Bottom-left - Red
+         0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f,  // Bottom-right - Green
+         0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 1.0f,  // Top-right - Blue
+        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 0.0f,  // Top-left - Yellow
+        
         // Back face
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,  // Bottom-left - Cyan
+         0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f,  // Bottom-right - Magenta
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,  // Top-right - White
+        -0.5f,  0.5f, -0.5f, 0.5f, 0.5f, 0.5f   // Top-left - Gray
     };
 }
 
 std::vector<unsigned int> MeshFactory::GetCubeIndices() {
     return {
-        // Front
+        // Front face
         0, 1, 2,
         2, 3, 0,
-        // Right
+        // Right face
         1, 5, 6,
         6, 2, 1,
-        // Back
+        // Back face
         5, 4, 7,
         7, 6, 5,
-        // Left
+        // Left face
         4, 0, 3,
         3, 7, 4,
-        // Top
+        // Top face
         3, 2, 6,
         6, 7, 3,
-        // Bottom
+        // Bottom face
         4, 5, 1,
         1, 0, 4
     };
@@ -142,27 +143,53 @@ void MeshFactory::GeneratePlaneData(std::vector<float>& vertices, std::vector<un
 void MeshFactory::GenerateCylinderData(std::vector<float>& vertices, std::vector<unsigned int>& indices, 
                                      float radius, float height, int segments) {
     float halfHeight = height / 2.0f;
+    
+    // Center vertices (for caps)
+    // Top center
+    vertices.push_back(0.0f);          // Position
+    vertices.push_back(halfHeight);
+    vertices.push_back(0.0f);
+    vertices.push_back(1.0f);          // Color (white)
+    vertices.push_back(1.0f);
+    vertices.push_back(1.0f);
+
+    // Bottom center
+    vertices.push_back(0.0f);          // Position
+    vertices.push_back(-halfHeight);
+    vertices.push_back(0.0f);
+    vertices.push_back(1.0f);          // Color (white)
+    vertices.push_back(1.0f);
+    vertices.push_back(1.0f);
 
     // Generate vertices for the sides
     for (int i = 0; i <= segments; i++) {
         float angle = i * 2.0f * M_PI / segments;
         float x = radius * cos(angle);
         float z = radius * sin(angle);
+        float r = cos(angle) * 0.5f + 0.5f;
+        float g = sin(angle) * 0.5f + 0.5f;
+        float b = 0.5f;
 
         // Top vertex
-        vertices.push_back(x);
+        vertices.push_back(x);           // Position
         vertices.push_back(halfHeight);
         vertices.push_back(z);
+        vertices.push_back(r);           // Color
+        vertices.push_back(g);
+        vertices.push_back(b);
 
         // Bottom vertex
-        vertices.push_back(x);
+        vertices.push_back(x);           // Position
         vertices.push_back(-halfHeight);
         vertices.push_back(z);
+        vertices.push_back(r);           // Color
+        vertices.push_back(g);
+        vertices.push_back(b);
     }
 
     // Generate indices for the sides
     for (int i = 0; i < segments; i++) {
-        int baseIndex = i * 2;
+        int baseIndex = 2 + (i * 2); // +2 for the center vertices
         indices.push_back(baseIndex);
         indices.push_back(baseIndex + 1);
         indices.push_back(baseIndex + 2);
@@ -172,27 +199,19 @@ void MeshFactory::GenerateCylinderData(std::vector<float>& vertices, std::vector
         indices.push_back(baseIndex + 2);
     }
 
-    // Add center vertices for top and bottom caps
-    int centerTopIndex = vertices.size() / 3;
-    vertices.push_back(0.0f);
-    vertices.push_back(halfHeight);
-    vertices.push_back(0.0f);
-
-    int centerBottomIndex = centerTopIndex + 1;
-    vertices.push_back(0.0f);
-    vertices.push_back(-halfHeight);
-    vertices.push_back(0.0f);
-
     // Generate indices for caps
     for (int i = 0; i < segments; i++) {
+        int topIndex = 2 + (i * 2);
+        int nextTopIndex = 2 + ((i + 1) % segments) * 2;
+        
         // Top cap
-        indices.push_back(centerTopIndex);
-        indices.push_back(i * 2);
-        indices.push_back(((i + 1) % segments) * 2);
+        indices.push_back(0);  // Center top
+        indices.push_back(topIndex);
+        indices.push_back(nextTopIndex);
 
         // Bottom cap
-        indices.push_back(centerBottomIndex);
-        indices.push_back(i * 2 + 1);
-        indices.push_back(((i + 1) % segments) * 2 + 1);
+        indices.push_back(1);  // Center bottom
+        indices.push_back(topIndex + 1);
+        indices.push_back(nextTopIndex + 1);
     }
 } 

@@ -8,6 +8,8 @@
 #include "imgui_impl_opengl3.h"
 #include "Scene/Scene.h"
 #include "Scene/Mesh.h"
+#include "Scene/MeshFactory.h"
+#include "Scene/Material.h"
 #include <vector>
 #include "Input.h"
 #include <glad/glad.h>

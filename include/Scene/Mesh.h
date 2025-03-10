@@ -1,6 +1,7 @@
 #pragma once
 #include "../Shader.h"
 #include "SceneObject.h"
+#include "Material.h"
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

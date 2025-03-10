@@ -1,6 +1,8 @@
 #include <glad/glad.h>
 #include "Renderer.h"
 #include "Input.h"
+#include "Scene/MeshFactory.h"
+#include "Scene/Material.h"
 #include <iostream>
 
 
@@ -50,32 +52,46 @@ Renderer::Renderer(Window * window):activeWindowClass(window){
     glEnable(GL_DEPTH_TEST);
 
     std::vector<float> triangleVertices = {
-        0.0f,  0.5f, 0.0f, 
-       -0.5f, -0.5f, 0.0f, 
-        0.5f, -0.5f, 0.0f   
-   };
-   std::vector<float> SqauareVertices = {
-    0.0f,  0.5f, 0.0f,  
-   -0.5f, -0.5f, 0.0f,  
-    0.5f, -0.5f, 0.0f  , 
-    0.0f, -0.0f, 0.7f   
+        // Positions         // Colors
+         0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // Red
+        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,  // Green
+         0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f   // Blue
+    };
 
-};
-std::vector<unsigned int> triangleIndices = {
-    0, 1, 3,  // first Triangle
-    1, 2, 3  
-};
+    std::vector<float> square2Vertices = {
+        // Positions         // Colors
+         0.0f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f,  // Yellow
+        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f,  // Cyan
+         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,  // Magenta
+         0.0f, -0.0f, 0.7f, 1.0f, 1.0f, 1.0f   // White
+    };
+
+    std::vector<unsigned int> triangleIndices = {
+        0, 1, 2  // Triangle
+    };
+
+    std::vector<unsigned int> squareIndices = {
+        0, 1, 3,  // First Triangle
+        1, 2, 3   // Second Triangle
+    };
 
     Scene* scene = new Scene();
-    Mesh* Sqaure =  new Mesh(shader);
-    Mesh* Sqaure2 =  new Mesh(shader);
-
-    Sqaure2->LoadMesh(triangleVertices,triangleIndices);
-    Sqaure->LoadMesh(triangleVertices,triangleIndices);
-    scene->AddObject(Sqaure);
-    scene->AddObject(Sqaure2);
+    
+    // Create a cube with metal material
+    Mesh* cube = MeshFactory::CreateCube(shader);
+    Material* metalMaterial = Material::CreateMetal();
+    cube->AddMaterial(metalMaterial);
+    cube->SetPosition(glm::vec3(-1.5f, 0.0f, 0.0f));
+    scene->AddObject(cube);
+    
+    // Create a cylinder with wood material
+    Mesh* cylinder = MeshFactory::CreateCylinder(shader, 0.5f, 1.0f, 32);
+    Material* woodMaterial = Material::CreateWood();
+    cylinder->AddMaterial(woodMaterial);
+    cylinder->SetPosition(glm::vec3(1.5f, 0.0f, 0.0f));
+    scene->AddObject(cylinder);
+    
     Scenes.push_back(scene);
-    Sqaure->Translate(glm::vec3(0.1f,0.0f,0.0f));
     this->shaderProgram = shader->CreateShaderProgram();
 
     // Initialize axis lines
@@ -106,20 +122,15 @@ Scene* Renderer::getActiveScene()
 
 
 void Renderer::RenderTriangle() {
-    float timeValue = glfwGetTime();
-    float redValue = (sin(timeValue) / 2.0f) + 0.5f;
-    shader->SetUniform4f("ourColor", redValue, 0.5f, 0.2f, 1.0f);
+    // We no longer need to set the ourColor uniform since we use vertex colors
     shader->Use();
     
     for (Scene* Scene : Scenes) {
         Scene->Render(shader);
-        
     }
 }
 
 void Renderer::Clear() {
-    // std::cout << activeWindowClass->getWindowSize().x <<std::endl;
-    
     // First clear the entire window with a darker color
     glDisable(GL_SCISSOR_TEST);
     glClearColor(0.15f, 0.15f, 0.15f, 1.0f);  // Darker grey for window background
@@ -132,7 +143,12 @@ void Renderer::Clear() {
     glClearColor(0.283f, 0.283f, 0.283f, 1.0f);  // Blender-like grey for viewport
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render the axis lines after clearing
+    // First render the scene meshes
+    for (Scene* Scene : Scenes) {
+        Scene->Render(shader);
+    }
+
+    // Then render the axis lines on top
     RenderAxisLines();
 }
 
@@ -141,6 +157,7 @@ void Renderer::InitializeAxisLines() {
 
     // Create and compile the axis shader
     axisLines.shader = new Shader("SHADERS/axis.vert", "SHADERS/axis.frag");
+    axisLines.shader->CreateShaderProgram();  // Create the shader program
 
     // Create vertex data for infinite axis lines
     // Each line has two vertices with positions and colors
@@ -184,16 +201,22 @@ void Renderer::RenderAxisLines() {
     glLineWidth(2.0f);
 
     // Use the axis shader
+    axisLines.shader->Use();
 
-
-    // Set view and projection matrices
+    // Get matrices from scene
     Scene* scene = getActiveScene();
+    glm::mat4 view = scene->GetViewMatrix();
+    glm::mat4 projection = scene->GetProjectionMatrix();
+
+    // Set shader uniforms
+    axisLines.shader->SetUniformMat4("view", view);
+    axisLines.shader->SetUniformMat4("projection", projection);
 
     // Draw the axis lines
     glBindVertexArray(axisLines.VAO);
     glDrawArrays(GL_LINES, 0, 6); // 3 lines, 2 vertices each
 
-    // Reset line width
+    // Reset OpenGL state
     glLineWidth(1.0f);
 }
 

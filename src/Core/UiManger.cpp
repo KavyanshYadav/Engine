@@ -532,7 +532,6 @@ void UIManager::RenderAnimationTab() {
 
 void UIManager::RenderCameraControls() {
     ImGuiWindowFlags cameraFlags = 
-        ImGuiWindowFlags_NoMove | 
         ImGuiWindowFlags_NoResize | 
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings |

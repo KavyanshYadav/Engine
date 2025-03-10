@@ -26,7 +26,10 @@ public:
     void SetUniform3f(const std::string& name, float v0, float v1, float v2);
     void SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3);
     void SetUniformMat4(const std::string& name, const glm::mat4& matrix);
-
+    void SetViewMatrix(const glm::mat4& matrix) { viewMatrix = matrix; }
+    void SetProjectionMatrix(const glm::mat4& matrix) { projectionMatrix = matrix; }
+    glm::mat4 GetViewMatrix() const { return viewMatrix; }
+    glm::mat4 GetProjectionMatrix() const { return projectionMatrix; }
 
 private:
 	std::string veretxShaderRaw;
@@ -38,5 +41,6 @@ private:
 	std::string ReadShaderSource(const char* filePath);
 	GLint GetUniformLocation(const std::string& name);
 	GLuint CompileShader(const char* shaderSource, GLenum shaderType);
-
+    glm::mat4 viewMatrix;
+    glm::mat4 projectionMatrix;
 };

@@ -98,13 +98,18 @@ std::vector<SceneObject*> Scene::GetSceneNodes (){
 }
 
 void Scene::Render(Shader* shader) {
+    // Set view and projection matrices in the shader
+    shader->SetViewMatrix(viewMatrix);
+    shader->SetProjectionMatrix(projectionMatrix);
+    
+    // Set uniforms in the shader
     shader->Use();
-
     shader->SetUniformMat4("view", viewMatrix);
     shader->SetUniformMat4("projection", projectionMatrix);
-    for (SceneObject* obj : objects) {
-        obj->Render(shader);
-        
+    
+    // Render all objects
+    for (auto* object : objects) {
+        object->Render(shader);
     }
 }
 

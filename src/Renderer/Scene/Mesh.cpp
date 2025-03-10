@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include "Scene/Mesh.h"
+#include "Scene/Material.h"
 #include <iostream>
 
 Mesh::Mesh(Shader* shader) : shader(shader) {
@@ -47,8 +48,13 @@ void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsign
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    // Color attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     UpdateStats();
 }
@@ -114,11 +120,25 @@ void Mesh::Update(float deltaTime) {
     }
 }
 
-void Mesh::Render(Shader* shader) {
+void Mesh::Render(Shader* sceneShader) {
     if (!isVisible) return;
 
+    // Use the mesh's own shader
     shader->Use();
+    
+    // Set the transformation matrices
     shader->SetUniformMat4("model", modelMatrix);
+    shader->SetUniformMat4("view", sceneShader->GetViewMatrix());
+    shader->SetUniformMat4("projection", sceneShader->GetProjectionMatrix());
+    
+    // Apply material properties if available
+    if (!materials.empty()) {
+        materials[0]->Apply(shader);  // Use the first material for now
+    } else {
+        // Apply default material properties
+        Material defaultMaterial;
+        defaultMaterial.Apply(shader);
+    }
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
