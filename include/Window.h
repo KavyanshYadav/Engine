@@ -29,10 +29,15 @@ public:
     bool shouldClose() const;
     void setShouldClose(bool close);
 
+    // Callback methods
+    void SetKeyCallback(GLFWkeyfun callback);
+    void SetMouseButtonCallback(GLFWmousebuttonfun callback);
+    void SetCursorPosCallback(GLFWcursorposfun callback);
+    void SetScrollCallback(GLFWscrollfun callback);
 
 private:
     GLFWwindow* window;
-    Input * inputhandler;
+    Input* inputhandler;
 };
 
 

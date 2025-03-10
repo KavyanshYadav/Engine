@@ -1,6 +1,7 @@
 #include "Window.h"
 #include <iostream>
 #include "Input.h"
+#include <glad/glad.h>
 
 Window::Window(int width, int height, const std::string& title) {
     if (!glfwInit()) {
@@ -19,11 +20,12 @@ Window::Window(int width, int height, const std::string& title) {
         exit(EXIT_FAILURE);
     }
 
-   
-
     glfwMakeContextCurrent(window);
-   
     
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -100,4 +102,20 @@ void Window::SwapBuffers() {
 
 GLFWwindow* Window::GetGLFWWindow() const {
     return window;
+}
+
+void Window::SetKeyCallback(GLFWkeyfun callback) {
+    glfwSetKeyCallback(window, callback);
+}
+
+void Window::SetMouseButtonCallback(GLFWmousebuttonfun callback) {
+    glfwSetMouseButtonCallback(window, callback);
+}
+
+void Window::SetCursorPosCallback(GLFWcursorposfun callback) {
+    glfwSetCursorPosCallback(window, callback);
+}
+
+void Window::SetScrollCallback(GLFWscrollfun callback) {
+    glfwSetScrollCallback(window, callback);
 }
