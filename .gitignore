@@ -1,4 +1,7 @@
 build
 .vscode
 .vs
+bin
+CMakeFiles
+
 

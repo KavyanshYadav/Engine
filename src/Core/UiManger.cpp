@@ -308,7 +308,7 @@ void UIManager::RenderPropertiesPanel() {
             glm::vec3 scale = mesh->GetScale();
             if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.1f)) {
             mesh->SetScale(scale);
-            }
+        }
 
             ImGui::TreePop();
         }
@@ -1158,8 +1158,8 @@ void UIManager::RenderSystemInfoWindow() {
                         ImGui::BulletText("%s", ext.c_str());
                     }
                 }
-                ImGui::TreePop();
-            }
+            ImGui::TreePop();
+        }
         }
 
         // Memory Information
