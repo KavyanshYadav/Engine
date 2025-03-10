@@ -8,6 +8,7 @@
 #include <sstream>
 #include "imgui_internal.h"
 #include "Logger.h"
+#include <filesystem>
 
 UIManager::UIManager(GLFWwindow* window, Renderer* renderer) : window(window), renderer(renderer) {
     IMGUI_CHECKVERSION();
@@ -106,8 +107,6 @@ void UIManager::Update() {
     RenderPropertiesPanel();
 
     // 4. Timeline Panel (bottom, excluding left panel)
-    ImGui::SetNextWindowPos(ImVec2(propertyPanelWidth, height - timelinePanelHeight));
-    ImGui::SetNextWindowSize(ImVec2(width - propertyPanelWidth, timelinePanelHeight));
     RenderTimelinePanel();
 
     // Calculate viewport area (area between panels)
@@ -474,8 +473,17 @@ void UIManager::RenderPropertiesPanel() {
 }
 
 void UIManager::RenderTimelinePanel() {
-    ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - timelinePanelHeight));
-    ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, timelinePanelHeight));
+    int width = ImGui::GetIO().DisplaySize.x;
+    int height = ImGui::GetIO().DisplaySize.y;
+    
+    // File System Panel (left side of the bottom panel)
+    ImGui::SetNextWindowPos(ImVec2(propertyPanelWidth, height - timelinePanelHeight));
+    ImGui::SetNextWindowSize(ImVec2(fileSystemPanelWidth, timelinePanelHeight));
+    RenderFileSystemPanel();
+
+    // Timeline Panel (right side of the bottom panel)
+    ImGui::SetNextWindowPos(ImVec2(propertyPanelWidth + fileSystemPanelWidth, height - timelinePanelHeight));
+    ImGui::SetNextWindowSize(ImVec2(width - propertyPanelWidth - fileSystemPanelWidth, timelinePanelHeight));
     ImGui::Begin("Timeline", nullptr, 
         ImGuiWindowFlags_NoMove | 
         ImGuiWindowFlags_NoResize | 
@@ -483,6 +491,92 @@ void UIManager::RenderTimelinePanel() {
 
     RenderTimelineTabs();
 
+    ImGui::End();
+}
+
+void UIManager::RenderFileSystemPanel() {
+    ImGui::Begin("File System", nullptr, 
+        ImGuiWindowFlags_NoMove | 
+        ImGuiWindowFlags_NoResize | 
+        ImGuiWindowFlags_NoCollapse);
+
+    // Navigation bar
+    if (ImGui::Button("◄")) {
+        auto parent = std::filesystem::path(fileSystemState.currentPath).parent_path();
+        if (!parent.empty()) {
+            NavigateToDirectory(parent.string());
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("⟳")) {
+        RefreshDirectoryContents();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("↑")) {
+        NavigateToDirectory(std::filesystem::path(fileSystemState.currentPath).parent_path().string());
+    }
+    ImGui::SameLine();
+    
+    // Current path display and navigation
+    char pathBuffer[1024];
+    strcpy_s(pathBuffer, fileSystemState.currentPath.c_str());
+    if (ImGui::InputText("##Path", pathBuffer, sizeof(pathBuffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+        NavigateToDirectory(pathBuffer);
+    }
+
+    // Search filter
+    ImGui::Separator();
+    fileSystemState.filter.Draw("Filter", ImGui::GetWindowWidth() * 0.7f);
+    ImGui::SameLine();
+    ImGui::Checkbox("Show Hidden", &fileSystemState.showHiddenFiles);
+
+    // Favorites/Quick Access
+    if (ImGui::BeginChild("Favorites", ImVec2(0, 80), true)) {
+        for (const auto& favorite : fileSystemState.favoriteDirectories) {
+            if (ImGui::Button(std::filesystem::path(favorite).filename().string().c_str())) {
+                NavigateToDirectory(favorite);
+            }
+            ImGui::SameLine();
+        }
+    }
+    ImGui::EndChild();
+
+    // File/Directory list
+    ImGui::BeginChild("Files", ImVec2(0, 0), true);
+    
+    // Handle drag and drop
+    HandleFileDrop();
+
+    // Display directories first, then files
+    for (const auto& entry : fileSystemState.currentEntries) {
+        if (!fileSystemState.showHiddenFiles && entry.path().filename().string()[0] == '.') {
+            continue;
+        }
+
+        if (!fileSystemState.filter.PassFilter(entry.path().filename().string().c_str())) {
+            continue;
+        }
+
+        if (std::filesystem::is_directory(entry)) {
+            RenderFileIcon(entry);
+        }
+    }
+
+    for (const auto& entry : fileSystemState.currentEntries) {
+        if (!fileSystemState.showHiddenFiles && entry.path().filename().string()[0] == '.') {
+            continue;
+        }
+
+        if (!fileSystemState.filter.PassFilter(entry.path().filename().string().c_str())) {
+            continue;
+        }
+
+        if (!std::filesystem::is_directory(entry)) {
+            RenderFileIcon(entry);
+        }
+    }
+
+    ImGui::EndChild();
     ImGui::End();
 }
 
@@ -1420,4 +1514,141 @@ UIManager::~UIManager() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+}
+
+void UIManager::RefreshDirectoryContents() {
+    fileSystemState.currentEntries.clear();
+    try {
+        for (const auto& entry : std::filesystem::directory_iterator(fileSystemState.currentPath)) {
+            fileSystemState.currentEntries.push_back(entry);
+        }
+        
+        // Sort entries: directories first, then files, both alphabetically
+        std::sort(fileSystemState.currentEntries.begin(), fileSystemState.currentEntries.end(),
+            [](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b) {
+                bool aIsDir = std::filesystem::is_directory(a);
+                bool bIsDir = std::filesystem::is_directory(b);
+                if (aIsDir != bIsDir) return aIsDir > bIsDir;
+                return a.path().filename() < b.path().filename();
+            });
+    }
+    catch (const std::exception& e) {
+        Logger::GetInstance().Critical("Failed to read directory: " + std::string(e.what()));
+    }
+}
+
+void UIManager::RenderFileIcon(const std::filesystem::directory_entry& entry) {
+    const float iconSize = 16.0f;
+    const float spacing = 4.0f;
+    bool isDirectory = std::filesystem::is_directory(entry);
+    std::string filename = entry.path().filename().string();
+    std::string icon = GetFileIcon(entry.path());
+    
+    ImGui::BeginGroup();
+    
+    // Icon and filename in a selectable
+    bool isSelected = fileSystemState.selectedFile == entry.path().string();
+    if (ImGui::Selectable((icon + " " + filename).c_str(), isSelected, 
+        ImGuiSelectableFlags_AllowDoubleClick, ImVec2(ImGui::GetWindowWidth() - 20, 0))) {
+        
+        fileSystemState.selectedFile = entry.path().string();
+        
+        if (ImGui::IsMouseDoubleClicked(0)) {
+            if (isDirectory) {
+                NavigateToDirectory(entry.path().string());
+            }
+            else {
+                // Handle file opening based on extension
+                std::string ext = entry.path().extension().string();
+                if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb") {
+                    // TODO: Import 3D model
+                }
+                else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp") {
+                    // TODO: Import texture
+                }
+                // Add more file type handlers as needed
+            }
+        }
+    }
+    
+    // Context menu
+    if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::MenuItem("Add to Favorites")) {
+            fileSystemState.favoriteDirectories.push_back(entry.path().string());
+        }
+        if (ImGui::MenuItem("Copy Path")) {
+            ImGui::SetClipboardText(entry.path().string().c_str());
+        }
+        if (ImGui::MenuItem("Delete")) {
+            try {
+                std::filesystem::remove(entry.path());
+                RefreshDirectoryContents();
+            }
+            catch (const std::exception& e) {
+                Logger::GetInstance().Critical("Failed to delete file: " + std::string(e.what()));
+            }
+        }
+        ImGui::EndPopup();
+    }
+    
+    ImGui::EndGroup();
+}
+
+std::string UIManager::GetFileIcon(const std::filesystem::path& path) {
+    if (std::filesystem::is_directory(path)) {
+        return "📁";
+    }
+    
+    std::string ext = path.extension().string();
+    if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb") {
+        return "📦";  // 3D model
+    }
+    else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp") {
+        return "🖼";  // Image
+    }
+    else if (ext == ".txt" || ext == ".md") {
+        return "📄";  // Text file
+    }
+    else if (ext == ".shader" || ext == ".vert" || ext == ".frag") {
+        return "⚡";  // Shader file
+    }
+    else if (ext == ".cpp" || ext == ".h") {
+        return "💻";  // Source code
+    }
+    return "📄";  // Default file icon
+}
+
+void UIManager::NavigateToDirectory(const std::string& path) {
+    try {
+        if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+            fileSystemState.currentPath = path;
+            RefreshDirectoryContents();
+        }
+    }
+    catch (const std::exception& e) {
+        Logger::GetInstance().Critical("Failed to navigate to directory: " + std::string(e.what()));
+    }
+}
+
+void UIManager::HandleFileDrop() {
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
+            std::string path((const char*)payload->Data);
+            if (std::filesystem::is_directory(path)) {
+                NavigateToDirectory(path);
+            }
+            else {
+                // Handle dropped file based on extension
+                std::string ext = std::filesystem::path(path).extension().string();
+                if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb") {
+                    // TODO: Import 3D model
+                }
+                else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp") {
+                    // TODO: Import texture
+                }
+                // Add more file type handlers as needed
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
 }

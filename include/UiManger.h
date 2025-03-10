@@ -15,6 +15,7 @@
 #include <vector>
 #include <memory>
 #include <Windows.h>
+#include <filesystem>
 
 class UIManager {
 public:
@@ -156,4 +157,25 @@ private:
         bool showCriticalLogs = true;
         ImGuiTextFilter filter;
     } terminalState;
+
+    // File system panel
+    struct FileSystemState {
+        std::string currentPath = std::filesystem::current_path().string();
+        std::vector<std::filesystem::directory_entry> currentEntries;
+        std::string selectedFile;
+        bool showHiddenFiles = false;
+        std::string searchFilter;
+        std::vector<std::string> favoriteDirectories;
+        ImGuiTextFilter filter;
+    } fileSystemState;
+
+    void RenderFileSystemPanel();
+    void RefreshDirectoryContents();
+    void RenderFileIcon(const std::filesystem::directory_entry& entry);
+    void HandleFileDrop();
+    std::string GetFileIcon(const std::filesystem::path& path);
+    void NavigateToDirectory(const std::string& path);
+    
+    // Split the timeline panel into two sections
+    float fileSystemPanelWidth = 300.0f;  // Width of the file system panel
 };
