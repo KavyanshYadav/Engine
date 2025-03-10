@@ -11,6 +11,10 @@
 #include "Logger.h"
 #include "Core/ConfigManager.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <string>
+#include <vector>
+#include <memory>
+#include <Windows.h>
 
 class UIManager {
 public:
@@ -30,11 +34,89 @@ private:
     void DrawCameraGizmo();      // New method for camera gizmo
     void RenderToolbar();      // New method for toolbar
     void RenderSystemInfoWindow();  // New method for system info
+    void RenderPerformanceWindow(); // New method for performance monitoring
     
     // New timeline tab methods
     void RenderTimelineTabs();
     void RenderTerminalTab();
     void RenderAnimationTab();
+    
+    // Performance monitoring structures
+    struct CPUMetrics {
+        float usagePercent = 0.0f;
+        int numThreadsActive = 0;
+        float clockSpeed = 0.0f;
+        float temperature = 0.0f;
+        std::vector<float> usageHistory;
+        std::vector<float> temperatureHistory;
+    };
+
+    struct GPUMetrics {
+        float usagePercent = 0.0f;
+        float vramTotalMB = 0.0f;
+        float vramUsageMB = 0.0f;
+        float clockSpeed = 0.0f;
+        float temperature = 0.0f;
+        std::vector<float> usageHistory;
+        std::vector<float> vramHistory;
+    };
+
+    struct MemoryMetrics {
+        float totalPhysicalMB = 0.0f;
+        float usedPhysicalMB = 0.0f;
+        float totalVirtualMB = 0.0f;
+        float usedVirtualMB = 0.0f;
+        float pageFileUsage = 0.0f;
+        std::vector<float> physicalHistory;
+        std::vector<float> virtualHistory;
+    };
+
+    struct RenderingMetrics {
+        float fps = 0.0f;
+        float frameTime = 0.0f;
+        float gpuFrameTime = 0.0f;
+        float cpuFrameTime = 0.0f;
+        std::vector<float> fpsHistory;
+        std::vector<float> frameTimeHistory;
+    };
+
+    struct RenderingStatistics {
+        int drawCalls = 0;
+        int triangles = 0;
+        int vertices = 0;
+        int textures = 0;
+        int shaderSwitches = 0;
+        float batchedDrawCalls = 0.0f;
+        float culledObjects = 0.0f;
+    };
+
+    struct PerformanceMetrics {
+        CPUMetrics cpu;
+        GPUMetrics gpu;
+        MemoryMetrics memory;
+        RenderingMetrics rendering;
+        RenderingStatistics statistics;
+    };
+
+    struct PerformanceState {
+        bool showPerformanceWindow = false;
+        bool pauseCollection = false;
+        bool showCPUGraph = true;
+        bool showGPUGraph = true;
+        bool showMemoryGraph = true;
+        bool showFPSGraph = true;
+        float updateInterval = 0.5f;  // Update interval in seconds
+        float timeSinceLastUpdate = 0.0f;
+        size_t historySize = 120;  // 1 minute of history at 0.5s intervals
+        PerformanceMetrics metrics;
+    };
+
+    PerformanceState performanceState;
+
+    void UpdatePerformanceMetrics(float deltaTime);
+    void CollectPerformanceMetrics();
+    void RenderPerformanceGraph(const char* label, const std::vector<float>& data, 
+                              float minScale, float maxScale, const ImVec4& color);
     
     Renderer* renderer;
     GLFWwindow* window;

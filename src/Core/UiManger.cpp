@@ -1,5 +1,13 @@
 #include "UiManger.h"
 #include <functional>
+#include <Windows.h>
+#include <psapi.h>
+#include <pdh.h>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include "imgui_internal.h"
+#include "Logger.h"
 
 UIManager::UIManager(GLFWwindow* window, Renderer* renderer) : window(window), renderer(renderer) {
     IMGUI_CHECKVERSION();
@@ -142,6 +150,12 @@ void UIManager::Update() {
 
     // Render system info window if enabled
     RenderSystemInfoWindow();
+
+    // Update performance metrics
+    UpdatePerformanceMetrics(ImGui::GetIO().DeltaTime);
+
+    // Add performance window rendering
+    RenderPerformanceWindow();
 }
 
 void UIManager::RenderMenuBar() {
@@ -781,6 +795,14 @@ void UIManager::RenderToolbar() {
         // Toggle debug panel
     }
     
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
+    if (ImGui::Button("Performance")) {
+        performanceState.showPerformanceWindow = true;
+    }
+
     ImGui::End();
 }
 
@@ -973,17 +995,36 @@ void UIManager::RenderSceneHierarchy() {
 void UIManager::RenderSystemInfoWindow() {
     if (!uiState.showSystemInfo) return;
 
+    // Make sure ConfigManager is initialized when we first open the window
+    static bool configInitialized = false;
+    if (!configInitialized) {
+        ConfigManager::GetInstance().Initialize();
+        configInitialized = true;
+    }
+
     ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("System Information", &uiState.showSystemInfo)) {
         auto& configManager = ConfigManager::GetInstance();
 
         // CPU Information
         if (ImGui::CollapsingHeader("CPU Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("Vendor: %s", configManager.GetConfigValue("System.CPU.Vendor").c_str());
-            ImGui::Text("Brand: %s", configManager.GetConfigValue("System.CPU.Brand").c_str());
-            ImGui::Text("Cores: %d", configManager.GetConfigValueInt("System.CPU.Cores"));
-            ImGui::Text("Threads: %d", configManager.GetConfigValueInt("System.CPU.Threads"));
-            ImGui::Text("Architecture: %s", configManager.GetConfigValue("System.CPU.Architecture").c_str());
+            std::string vendor = configManager.GetConfigValue("System.CPU.Vendor");
+            std::string brand = configManager.GetConfigValue("System.CPU.Brand");
+            std::string arch = configManager.GetConfigValue("System.CPU.Architecture");
+
+            ImGui::Text("Vendor: %s", vendor.empty() ? "Unknown" : vendor.c_str());
+            ImGui::Text("Brand: %s", brand.empty() ? "Unknown" : brand.c_str());
+            
+            // Use try-catch for integer conversions
+            try {
+                ImGui::Text("Cores: %d", configManager.GetConfigValueInt("System.CPU.Cores"));
+                ImGui::Text("Threads: %d", configManager.GetConfigValueInt("System.CPU.Threads"));
+            } catch (...) {
+                ImGui::Text("Cores: Unknown");
+                ImGui::Text("Threads: Unknown");
+            }
+            
+            ImGui::Text("Architecture: %s", arch.empty() ? "Unknown" : arch.c_str());
             
             // CPU Features
             std::string features = configManager.GetConfigValue("System.CPU.Features");
@@ -1003,14 +1044,19 @@ void UIManager::RenderSystemInfoWindow() {
 
         // GPU Information
         if (ImGui::CollapsingHeader("GPU Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("Vendor: %s", configManager.GetConfigValue("System.GPU.Vendor").c_str());
-            ImGui::Text("Renderer: %s", configManager.GetConfigValue("System.GPU.Renderer").c_str());
-            ImGui::Text("Version: %s", configManager.GetConfigValue("System.GPU.Version").c_str());
-            ImGui::Text("GLSL Version: %s", configManager.GetConfigValue("System.GPU.GLSLVersion").c_str());
+            std::string vendor = configManager.GetConfigValue("System.GPU.Vendor");
+            std::string renderer = configManager.GetConfigValue("System.GPU.Renderer");
+            std::string version = configManager.GetConfigValue("System.GPU.Version");
+            std::string glslVersion = configManager.GetConfigValue("System.GPU.GLSLVersion");
+
+            ImGui::Text("Vendor: %s", vendor.empty() ? "Unknown" : vendor.c_str());
+            ImGui::Text("Renderer: %s", renderer.empty() ? "Unknown" : renderer.c_str());
+            ImGui::Text("Version: %s", version.empty() ? "Unknown" : version.c_str());
+            ImGui::Text("GLSL Version: %s", glslVersion.empty() ? "Unknown" : glslVersion.c_str());
             
             // GPU Extensions
-            if (ImGui::TreeNode("Extensions")) {
-                std::string extensions = configManager.GetConfigValue("System.GPU.Extensions");
+            std::string extensions = configManager.GetConfigValue("System.GPU.Extensions");
+            if (!extensions.empty() && ImGui::TreeNode("Extensions")) {
                 std::stringstream ss(extensions);
                 std::string ext;
                 while (std::getline(ss, ext, ';')) {
@@ -1024,29 +1070,34 @@ void UIManager::RenderSystemInfoWindow() {
 
         // Memory Information
         if (ImGui::CollapsingHeader("Memory Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-            float totalPhysMB = std::stof(configManager.GetConfigValue("System.Memory.TotalPhysical"));
-            float availPhysMB = std::stof(configManager.GetConfigValue("System.Memory.AvailablePhysical"));
-            float totalVirtMB = std::stof(configManager.GetConfigValue("System.Memory.TotalVirtual"));
-            float availVirtMB = std::stof(configManager.GetConfigValue("System.Memory.AvailableVirtual"));
+            try {
+                float totalPhysMB = std::stof(configManager.GetConfigValue("System.Memory.TotalPhysical"));
+                float availPhysMB = std::stof(configManager.GetConfigValue("System.Memory.AvailablePhysical"));
+                float totalVirtMB = std::stof(configManager.GetConfigValue("System.Memory.TotalVirtual"));
+                float availVirtMB = std::stof(configManager.GetConfigValue("System.Memory.AvailableVirtual"));
 
-            ImGui::Text("Physical Memory:");
-            ImGui::Indent();
-            ImGui::Text("Total: %.2f GB", totalPhysMB / 1024.0f);
-            ImGui::Text("Available: %.2f GB", availPhysMB / 1024.0f);
-            ImGui::Text("Used: %.2f GB", (totalPhysMB - availPhysMB) / 1024.0f);
-            ImGui::Unindent();
+                ImGui::Text("Physical Memory:");
+                ImGui::Indent();
+                ImGui::Text("Total: %.2f GB", totalPhysMB / 1024.0f);
+                ImGui::Text("Available: %.2f GB", availPhysMB / 1024.0f);
+                ImGui::Text("Used: %.2f GB", (totalPhysMB - availPhysMB) / 1024.0f);
+                ImGui::Unindent();
 
-            ImGui::Text("Virtual Memory:");
-            ImGui::Indent();
-            ImGui::Text("Total: %.2f GB", totalVirtMB / 1024.0f);
-            ImGui::Text("Available: %.2f GB", availVirtMB / 1024.0f);
-            ImGui::Text("Used: %.2f GB", (totalVirtMB - availVirtMB) / 1024.0f);
-            ImGui::Unindent();
+                ImGui::Text("Virtual Memory:");
+                ImGui::Indent();
+                ImGui::Text("Total: %.2f GB", totalVirtMB / 1024.0f);
+                ImGui::Text("Available: %.2f GB", availVirtMB / 1024.0f);
+                ImGui::Text("Used: %.2f GB", (totalVirtMB - availVirtMB) / 1024.0f);
+                ImGui::Unindent();
+            } catch (...) {
+                ImGui::Text("Memory information unavailable");
+            }
         }
 
         // Operating System Information
         if (ImGui::CollapsingHeader("Operating System", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("%s", configManager.GetConfigValue("System.OS").c_str());
+            std::string os = configManager.GetConfigValue("System.OS");
+            ImGui::Text("%s", os.empty() ? "Unknown" : os.c_str());
         }
 
         // System Requirements Status
@@ -1066,6 +1117,298 @@ void UIManager::RenderSystemInfoWindow() {
         }
     }
     ImGui::End();
+}
+
+void UIManager::RenderPerformanceWindow() {
+    if (!performanceState.showPerformanceWindow) return;
+
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Performance Monitor", &performanceState.showPerformanceWindow)) {
+        auto& metrics = performanceState.metrics;
+
+        // Control bar
+        if (ImGui::Button(performanceState.pauseCollection ? "Resume" : "Pause")) {
+            performanceState.pauseCollection = !performanceState.pauseCollection;
+        }
+        ImGui::SameLine();
+        ImGui::Checkbox("CPU Graph", &performanceState.showCPUGraph);
+        ImGui::SameLine();
+        ImGui::Checkbox("GPU Graph", &performanceState.showGPUGraph);
+        ImGui::SameLine();
+        ImGui::Checkbox("Memory Graph", &performanceState.showMemoryGraph);
+        ImGui::SameLine();
+        ImGui::Checkbox("FPS Graph", &performanceState.showFPSGraph);
+
+        ImGui::Separator();
+
+        // Main metrics display
+        if (ImGui::BeginTabBar("PerformanceMetrics")) {
+            if (ImGui::BeginTabItem("Overview")) {
+                ImGui::Columns(2);
+
+                // Left column - CPU & GPU
+                ImGui::Text("CPU Usage: %.1f%%", metrics.cpu.usagePercent);
+                if (performanceState.showCPUGraph) {
+                    RenderPerformanceGraph("##CPU", metrics.cpu.usageHistory, 0.0f, 100.0f, 
+                                         ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+                }
+
+                ImGui::Text("GPU Usage: %.1f%%", metrics.gpu.usagePercent);
+                if (performanceState.showGPUGraph) {
+                    RenderPerformanceGraph("##GPU", metrics.gpu.usageHistory, 0.0f, 100.0f,
+                                         ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                }
+
+                ImGui::NextColumn();
+
+                // Right column - Memory & FPS
+                ImGui::Text("Memory Usage: %.1f / %.1f GB", 
+                          metrics.memory.usedPhysicalMB / 1024.0f,
+                          metrics.memory.totalPhysicalMB / 1024.0f);
+                if (performanceState.showMemoryGraph) {
+                    RenderPerformanceGraph("##Memory", metrics.memory.physicalHistory, 
+                                         0.0f, metrics.memory.totalPhysicalMB,
+                                         ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
+                }
+
+                ImGui::Text("FPS: %.1f (%.2f ms)", metrics.rendering.fps, metrics.rendering.frameTime);
+                if (performanceState.showFPSGraph) {
+                    RenderPerformanceGraph("##FPS", metrics.rendering.fpsHistory, 
+                                         0.0f, 200.0f,
+                                         ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                }
+
+                ImGui::Columns(1);
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("CPU Details")) {
+                ImGui::Text("CPU Usage: %.1f%%", metrics.cpu.usagePercent);
+                ImGui::Text("Active Threads: %d", metrics.cpu.numThreadsActive);
+                ImGui::Text("Clock Speed: %.2f GHz", metrics.cpu.clockSpeed);
+                ImGui::Text("Temperature: %.1f°C", metrics.cpu.temperature);
+                
+                if (ImGui::CollapsingHeader("Usage History", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    RenderPerformanceGraph("Usage %", metrics.cpu.usageHistory, 
+                                         0.0f, 100.0f,
+                                         ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+                }
+                
+                if (ImGui::CollapsingHeader("Temperature History")) {
+                    RenderPerformanceGraph("Temperature °C", metrics.cpu.temperatureHistory,
+                                         0.0f, 100.0f,
+                                         ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                }
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("GPU Details")) {
+                ImGui::Text("GPU Usage: %.1f%%", metrics.gpu.usagePercent);
+                ImGui::Text("VRAM Usage: %.1f / %.1f MB", metrics.gpu.vramUsageMB, metrics.gpu.vramTotalMB);
+                ImGui::Text("Clock Speed: %.0f MHz", metrics.gpu.clockSpeed);
+                ImGui::Text("Temperature: %.1f°C", metrics.gpu.temperature);
+                
+                if (ImGui::CollapsingHeader("Usage History", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    RenderPerformanceGraph("Usage %", metrics.gpu.usageHistory,
+                                         0.0f, 100.0f,
+                                         ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                }
+                
+                if (ImGui::CollapsingHeader("VRAM History")) {
+                    RenderPerformanceGraph("VRAM MB", metrics.gpu.vramHistory,
+                                         0.0f, metrics.gpu.vramTotalMB,
+                                         ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
+                }
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Memory Details")) {
+                ImGui::Text("Physical Memory: %.1f / %.1f GB (%.1f%%)", 
+                          metrics.memory.usedPhysicalMB / 1024.0f,
+                          metrics.memory.totalPhysicalMB / 1024.0f,
+                          (metrics.memory.usedPhysicalMB / metrics.memory.totalPhysicalMB) * 100.0f);
+                
+                ImGui::Text("Virtual Memory: %.1f / %.1f GB (%.1f%%)",
+                          metrics.memory.usedVirtualMB / 1024.0f,
+                          metrics.memory.totalVirtualMB / 1024.0f,
+                          (metrics.memory.usedVirtualMB / metrics.memory.totalVirtualMB) * 100.0f);
+                
+                ImGui::Text("Page File Usage: %.1f%%", metrics.memory.pageFileUsage * 100.0f);
+                
+                if (ImGui::CollapsingHeader("Physical Memory History", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    RenderPerformanceGraph("Physical MB", metrics.memory.physicalHistory,
+                                         0.0f, metrics.memory.totalPhysicalMB,
+                                         ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
+                }
+                
+                if (ImGui::CollapsingHeader("Virtual Memory History")) {
+                    RenderPerformanceGraph("Virtual MB", metrics.memory.virtualHistory,
+                                         0.0f, metrics.memory.totalVirtualMB,
+                                         ImVec4(0.0f, 1.0f, 1.0f, 1.0f));
+                }
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Rendering Stats")) {
+                ImGui::Columns(2);
+                
+                ImGui::Text("FPS: %.1f", metrics.rendering.fps);
+                ImGui::Text("Frame Time: %.2f ms", metrics.rendering.frameTime);
+                ImGui::Text("GPU Time: %.2f ms", metrics.rendering.gpuFrameTime);
+                ImGui::Text("CPU Time: %.2f ms", metrics.rendering.cpuFrameTime);
+                
+                ImGui::NextColumn();
+                
+                ImGui::Text("Draw Calls: %d", metrics.statistics.drawCalls);
+                ImGui::Text("Triangles: %d", metrics.statistics.triangles);
+                ImGui::Text("Vertices: %d", metrics.statistics.vertices);
+                ImGui::Text("Textures: %d", metrics.statistics.textures);
+                ImGui::Text("Shader Switches: %d", metrics.statistics.shaderSwitches);
+                ImGui::Text("Batched Draw Calls: %.0f", metrics.statistics.batchedDrawCalls);
+                ImGui::Text("Culled Objects: %.0f", metrics.statistics.culledObjects);
+                
+                ImGui::Columns(1);
+                
+                if (ImGui::CollapsingHeader("Frame Time History", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    RenderPerformanceGraph("Frame Time ms", metrics.rendering.frameTimeHistory,
+                                         0.0f, 33.3f,
+                                         ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                }
+                
+                if (ImGui::CollapsingHeader("FPS History")) {
+                    RenderPerformanceGraph("FPS", metrics.rendering.fpsHistory,
+                                         0.0f, 200.0f,
+                                         ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+                }
+                ImGui::EndTabItem();
+            }
+            
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+}
+
+void UIManager::UpdatePerformanceMetrics(float deltaTime) {
+    if (performanceState.pauseCollection) return;
+
+    performanceState.timeSinceLastUpdate += deltaTime;
+    if (performanceState.timeSinceLastUpdate >= performanceState.updateInterval) {
+        CollectPerformanceMetrics();
+        performanceState.timeSinceLastUpdate = 0.0f;
+    }
+
+    // Update FPS and frame time every frame
+    auto& metrics = performanceState.metrics;
+    metrics.rendering.fps = ImGui::GetIO().Framerate;
+    metrics.rendering.frameTime = 1000.0f / metrics.rendering.fps;
+
+    // Keep history size constant
+    const size_t maxHistory = performanceState.historySize;
+    auto& fpsHistory = metrics.rendering.fpsHistory;
+    auto& frameTimeHistory = metrics.rendering.frameTimeHistory;
+
+    fpsHistory.push_back(metrics.rendering.fps);
+    frameTimeHistory.push_back(metrics.rendering.frameTime);
+
+    if (fpsHistory.size() > maxHistory) fpsHistory.erase(fpsHistory.begin());
+    if (frameTimeHistory.size() > maxHistory) frameTimeHistory.erase(frameTimeHistory.begin());
+}
+
+void UIManager::CollectPerformanceMetrics() {
+    auto& metrics = performanceState.metrics;
+    
+    // Get CPU metrics
+    FILETIME idleTime, kernelTime, userTime;
+    GetSystemTimes(&idleTime, &kernelTime, &userTime);
+    
+    static ULARGE_INTEGER lastIdleTime = {0};
+    static ULARGE_INTEGER lastKernelTime = {0};
+    static ULARGE_INTEGER lastUserTime = {0};
+    
+    ULARGE_INTEGER idle, kernel, user;
+    idle.LowPart = idleTime.dwLowDateTime;
+    idle.HighPart = idleTime.dwHighDateTime;
+    kernel.LowPart = kernelTime.dwLowDateTime;
+    kernel.HighPart = kernelTime.dwHighDateTime;
+    user.LowPart = userTime.dwLowDateTime;
+    user.HighPart = userTime.dwHighDateTime;
+
+    if (lastIdleTime.QuadPart != 0) {
+        ULONGLONG idleDiff = idle.QuadPart - lastIdleTime.QuadPart;
+        ULONGLONG kernelDiff = kernel.QuadPart - lastKernelTime.QuadPart;
+        ULONGLONG userDiff = user.QuadPart - lastUserTime.QuadPart;
+        ULONGLONG totalDiff = kernelDiff + userDiff;
+        
+        if (totalDiff > 0) {
+            metrics.cpu.usagePercent = ((totalDiff - idleDiff) * 100.0f) / totalDiff;
+            metrics.cpu.usageHistory.push_back(metrics.cpu.usagePercent);
+            if (metrics.cpu.usageHistory.size() > performanceState.historySize) {
+                metrics.cpu.usageHistory.erase(metrics.cpu.usageHistory.begin());
+            }
+        }
+    }
+
+    lastIdleTime = idle;
+    lastKernelTime = kernel;
+    lastUserTime = user;
+
+    // Get memory metrics
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
+
+    metrics.memory.totalPhysicalMB = memInfo.ullTotalPhys / (1024.0f * 1024.0f);
+    metrics.memory.usedPhysicalMB = (memInfo.ullTotalPhys - memInfo.ullAvailPhys) / (1024.0f * 1024.0f);
+    metrics.memory.totalVirtualMB = memInfo.ullTotalVirtual / (1024.0f * 1024.0f);
+    metrics.memory.usedVirtualMB = (memInfo.ullTotalVirtual - memInfo.ullAvailVirtual) / (1024.0f * 1024.0f);
+    metrics.memory.pageFileUsage = memInfo.dwMemoryLoad / 100.0f;
+
+    metrics.memory.physicalHistory.push_back(metrics.memory.usedPhysicalMB);
+    metrics.memory.virtualHistory.push_back(metrics.memory.usedVirtualMB);
+
+    if (metrics.memory.physicalHistory.size() > performanceState.historySize) {
+        metrics.memory.physicalHistory.erase(metrics.memory.physicalHistory.begin());
+    }
+    if (metrics.memory.virtualHistory.size() > performanceState.historySize) {
+        metrics.memory.virtualHistory.erase(metrics.memory.virtualHistory.begin());
+    }
+
+    // Get GPU metrics from OpenGL
+    GLint totalMemKb = 0;
+    GLint currentMemKb = 0;
+    glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalMemKb);
+    glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &currentMemKb);
+
+    metrics.gpu.vramTotalMB = totalMemKb / 1024.0f;
+    metrics.gpu.vramUsageMB = (totalMemKb - currentMemKb) / 1024.0f;
+    metrics.gpu.usagePercent = (metrics.gpu.vramUsageMB / metrics.gpu.vramTotalMB) * 100.0f;
+
+    metrics.gpu.usageHistory.push_back(metrics.gpu.usagePercent);
+    metrics.gpu.vramHistory.push_back(metrics.gpu.vramUsageMB);
+
+    if (metrics.gpu.usageHistory.size() > performanceState.historySize) {
+        metrics.gpu.usageHistory.erase(metrics.gpu.usageHistory.begin());
+    }
+    if (metrics.gpu.vramHistory.size() > performanceState.historySize) {
+        metrics.gpu.vramHistory.erase(metrics.gpu.vramHistory.begin());
+    }
+
+    // Update rendering statistics
+    auto scene = renderer->getActiveScene();
+    metrics.statistics.drawCalls = renderer->GetDrawCalls();
+    metrics.statistics.triangles = renderer->GetTriangleCount();
+    metrics.statistics.vertices = renderer->GetVertexCount();
+    metrics.statistics.textures = renderer->GetTextureCount();
+    metrics.statistics.shaderSwitches = renderer->GetShaderSwitches();
+}
+
+void UIManager::RenderPerformanceGraph(const char* label, const std::vector<float>& data, 
+                                     float minScale, float maxScale, const ImVec4& color) {
+    if (data.empty()) return;
+
+    ImGui::PlotLines(label, data.data(), static_cast<int>(data.size()), 0, nullptr, 
+                     minScale, maxScale, ImVec2(ImGui::GetContentRegionAvail().x, 60));
 }
 
 void UIManager::Render() {

@@ -134,6 +134,13 @@ void Renderer::RenderTriangle() {
 }
 
 void Renderer::Clear() {
+    // Reset statistics for this frame
+    drawCalls = 0;
+    triangleCount = 0;
+    vertexCount = 0;
+    textureCount = 0;
+    shaderSwitches = 0;
+
     // First clear the entire window with a darker color
     glDisable(GL_SCISSOR_TEST);
     glClearColor(0.15f, 0.15f, 0.15f, 1.0f);  // Darker grey for window background
@@ -147,9 +154,23 @@ void Renderer::Clear() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // First render the scene meshes
-    for (Scene* Scene : Scenes) {
-        Scene->Render(shader);
+    for (Scene* scene : Scenes) {
+        // Update statistics before rendering
+        for (const auto& obj : scene->GetSceneNodes()) {
+            if (auto mesh = dynamic_cast<Mesh*>(obj)) {
+                const auto& stats = mesh->GetStats();
+                triangleCount += stats.triangleCount;
+                vertexCount += stats.vertexCount;
+                drawCalls++;
+            }
+        }
+        scene->Render(shader);
     }
+
+    // Count active textures
+    GLint activeTextures = 0;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTextures);
+    textureCount = activeTextures;
 
     // Then render the axis lines on top
     RenderAxisLines();

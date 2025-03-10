@@ -34,6 +34,13 @@ public:
     void RenderAxisLines();
     void CleanupAxisLines();
 
+    // Statistics getters
+    int GetDrawCalls() const { return drawCalls; }
+    int GetTriangleCount() const { return triangleCount; }
+    int GetVertexCount() const { return vertexCount; }
+    int GetTextureCount() const { return textureCount; }
+    int GetShaderSwitches() const { return shaderSwitches; }
+
 private:
     GLuint VAO, VBO;
     GLuint shaderProgram;
@@ -50,5 +57,12 @@ private:
         Shader* shader;
         bool initialized = false;
     } axisLines;
+
+    // Rendering statistics
+    int drawCalls = 0;
+    int triangleCount = 0;
+    int vertexCount = 0;
+    int textureCount = 0;
+    int shaderSwitches = 0;
 };
 
