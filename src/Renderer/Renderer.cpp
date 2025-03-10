@@ -77,9 +77,12 @@ Renderer::Renderer(Window * window):activeWindowClass(window){
 
     Scene* scene = new Scene();
     
-    // Create a cube with metal material
+    // Create a cube with enhanced metal material
     Mesh* cube = MeshFactory::CreateCube(shader);
     Material* metalMaterial = Material::CreateMetal();
+    metalMaterial->SetAlbedo(glm::vec3(0.98f, 0.98f, 0.98f));  // More reflective base color
+    metalMaterial->SetMetallic(1.0f);                           // Fully metallic
+    metalMaterial->SetRoughness(0.1f);                          // Very smooth surface
     cube->AddMaterial(metalMaterial);
     cube->SetPosition(glm::vec3(-1.5f, 0.0f, 0.0f));
     scene->AddObject(cube);

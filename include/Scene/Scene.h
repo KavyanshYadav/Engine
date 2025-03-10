@@ -2,6 +2,7 @@
 #include "../Shader.h"
 #include <vector>
 #include "SceneObject.h"
+#include "Light.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -12,6 +13,8 @@ public:
 
     void AddObject(SceneObject* object);
     void RemoveObject(SceneObject* object);
+    void AddLight(Light* light);
+    void RemoveLight(Light* light);
     void Update(float deltaTime);
     void Render(Shader *shader);
     void SetCameraView(glm::vec3 position, glm::vec3 target, glm::vec3 up);
@@ -20,6 +23,7 @@ public:
     void RotateCamera(float yaw, float pitch);
     void MoveCamera(const glm::vec3& direction);
     std::vector<SceneObject*> GetSceneNodes();
+    std::vector<Light*> GetLights() const { return lights; }
     
     // Mesh picking related methods
     void SetActiveMesh(SceneObject* mesh) { activeMesh = mesh; }
@@ -32,6 +36,7 @@ public:
 
 private:
     std::vector<SceneObject*> objects;
+    std::vector<Light*> lights;
     SceneObject* activeMesh;  // Currently selected mesh
     glm::mat4 viewMatrix;
     glm::mat4 projectionMatrix;

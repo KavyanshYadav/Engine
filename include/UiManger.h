@@ -9,6 +9,7 @@
 #include "Scene/SceneObject.h"
 #include "Scene/MeshFactory.h"
 #include "Logger.h"
+#include "Core/ConfigManager.h"
 #include <glm/gtc/type_ptr.hpp>
 
 class UIManager {
@@ -28,6 +29,7 @@ private:
     void RenderDebugPanel();      // New method for debug info
     void DrawCameraGizmo();      // New method for camera gizmo
     void RenderToolbar();      // New method for toolbar
+    void RenderSystemInfoWindow();  // New method for system info
     
     // New timeline tab methods
     void RenderTimelineTabs();
@@ -48,11 +50,16 @@ private:
 
     // Debug and rendering states
     struct {
+        bool showSystemInfo = false;  // New flag for system info window
+    } uiState;
+
+    // Debug state
+    struct {
+        bool showDebugPanel = false;
         bool wireframeMode = false;
         bool showBoundingBoxes = false;
         bool showNormals = false;
         bool showGrid = true;
-        bool showDebugPanel = false;
         bool showVertexPoints = false;
         float gridSize = 1.0f;
         int gridLines = 20;

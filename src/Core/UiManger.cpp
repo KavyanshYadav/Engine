@@ -113,11 +113,11 @@ void UIManager::Update() {
     *renderer->PanelX = propertyPanelWidth;
     *renderer->PanelY = timelinePanelHeight;
 
-    // 5. Camera Controls (overlay on viewport, bottom right)
-    float camControlWidth = 200.0f;
-    float camControlHeight = 120.0f;
+    // 5. Camera Controls (overlay on viewport, bottom left)
+    float camControlWidth = 250.0f;  // Increased width for sliders
+    float camControlHeight = 180.0f;  // Increased height for additional controls
     ImGui::SetNextWindowPos(ImVec2(
-        width - camControlWidth - 10,
+        propertyPanelWidth + 10,  // Just after the properties panel
         height - timelinePanelHeight - camControlHeight - 10
     ));
     ImGui::SetNextWindowSize(ImVec2(camControlWidth, camControlHeight));
@@ -139,6 +139,9 @@ void UIManager::Update() {
         ImGui::SetNextWindowSize(ImVec2(280, 400), ImGuiCond_FirstUseEver);
         RenderDebugPanel();
     }
+
+    // Render system info window if enabled
+    RenderSystemInfoWindow();
 }
 
 void UIManager::RenderMenuBar() {
@@ -410,6 +413,49 @@ void UIManager::RenderPropertiesPanel() {
         }
     }
 
+    // Light Properties
+    if (ImGui::CollapsingHeader("Lights")) {
+        auto lights = scene->GetLights();
+        for (size_t i = 0; i < lights.size(); i++) {
+            Light* light = lights[i];
+            if (ImGui::TreeNode(("Light " + std::to_string(i)).c_str())) {
+                // Position
+                glm::vec3 pos = light->GetPosition();
+                float position[3] = { pos.x, pos.y, pos.z };
+                if (ImGui::DragFloat3("Position", position, 0.1f)) {
+                    light->SetPosition(glm::vec3(position[0], position[1], position[2]));
+                }
+
+                // Color
+                glm::vec3 col = light->GetColor();
+                float color[3] = { col.x, col.y, col.z };
+                if (ImGui::ColorEdit3("Color", color)) {
+                    light->SetColor(glm::vec3(color[0], color[1], color[2]));
+                }
+
+                // Intensity
+                float intensity = light->GetIntensity();
+                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f)) {
+                    light->SetIntensity(intensity);
+                }
+
+                if (ImGui::Button("Remove Light")) {
+                    scene->RemoveLight(light);
+                }
+                ImGui::TreePop();
+            }
+        }
+
+        if (ImGui::Button("Add Light")) {
+            Light* newLight = new Light(
+                glm::vec3(0.0f, 5.0f, 0.0f),  // position
+                glm::vec3(1.0f, 1.0f, 1.0f),  // color
+                1.0f                          // intensity
+            );
+            scene->AddLight(newLight);
+        }
+    }
+
     ImGui::End();
 }
 
@@ -542,28 +588,48 @@ void UIManager::RenderCameraControls() {
     Scene* scene = renderer->getActiveScene();
     
     if (ImGui::Button("Reset Camera")) {
-        // Reset to default camera position
+        // Reset to isometric view (Blender-style)
         scene->SetCameraView(
-            glm::vec3(0.0f, 0.0f, 3.0f),  // Position
-            glm::vec3(0.0f, 0.0f, 0.0f),  // Target
-            glm::vec3(0.0f, 1.0f, 0.0f)   // Up
+            glm::vec3(7.3589f, 6.9258f, 4.9583f),  // Isometric position
+            glm::vec3(0.0f, 0.0f, 0.0f),           // Looking at origin
+            glm::vec3(0.0f, 1.0f, 0.0f)            // Up vector
         );
     }
 
+    // Camera position sliders
     glm::vec3 camPos = scene->GetCameraPosition();
-    if (ImGui::DragFloat3("Position", glm::value_ptr(camPos), 0.1f)) {
+    bool positionChanged = false;
+    
+    // X position
+    if (ImGui::SliderFloat("X", &camPos.x, -10.0f, 10.0f)) {
+        positionChanged = true;
+    }
+    
+    // Y position
+    if (ImGui::SliderFloat("Y", &camPos.y, -10.0f, 10.0f)) {
+        positionChanged = true;
+    }
+    
+    // Z position
+    if (ImGui::SliderFloat("Z", &camPos.z, -10.0f, 10.0f)) {
+        positionChanged = true;
+    }
+
+    if (positionChanged) {
         scene->SetCameraView(camPos, 
-            scene->GetCameraPosition() + glm::normalize(scene->GetCameraTarget() - scene->GetCameraPosition()),
+            scene->GetCameraTarget(),
             glm::vec3(0.0f, 1.0f, 0.0f));
     }
 
-    // Arrange view buttons horizontally
+    ImGui::Separator();
+
+    // View buttons
     float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2) / 3;
     
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 0));
     if (ImGui::Button("Top", ImVec2(buttonWidth, 0))) {
         scene->SetCameraView(
-            glm::vec3(0.0f, 5.0f, 0.0f),
+            glm::vec3(0.0f, 10.0f, 0.0f),
             glm::vec3(0.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 0.0f, -1.0f)
         );
@@ -571,7 +637,7 @@ void UIManager::RenderCameraControls() {
     ImGui::SameLine();
     if (ImGui::Button("Front", ImVec2(buttonWidth, 0))) {
         scene->SetCameraView(
-            glm::vec3(0.0f, 0.0f, 5.0f),
+            glm::vec3(0.0f, 0.0f, 10.0f),
             glm::vec3(0.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
@@ -579,7 +645,7 @@ void UIManager::RenderCameraControls() {
     ImGui::SameLine();
     if (ImGui::Button("Side", ImVec2(buttonWidth, 0))) {
         scene->SetCameraView(
-            glm::vec3(5.0f, 0.0f, 0.0f),
+            glm::vec3(10.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
@@ -681,6 +747,14 @@ void UIManager::RenderToolbar() {
     ImGui::Separator();
     ImGui::SameLine();
 
+    // System Info Button
+    if (ImGui::Button("System Info")) {
+        uiState.showSystemInfo = true;
+    }
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
     // Debug options
     if (ImGui::Checkbox("Wireframe", &debugState.wireframeMode)) {
         if (debugState.wireframeMode) {
@@ -708,11 +782,6 @@ void UIManager::RenderToolbar() {
     }
     
     ImGui::End();
-
-    // Render debug panel if enabled
-    if (debugState.showDebugPanel) {
-        RenderDebugPanel();
-    }
 }
 
 void UIManager::RenderDebugPanel() {
@@ -728,8 +797,14 @@ void UIManager::RenderDebugPanel() {
             ImGui::Text("Objects in Scene: %d", scene->GetSceneNodes().size());
             
             if (ImGui::TreeNode("Grid Settings")) {
-                ImGui::DragFloat("Grid Size", &debugState.gridSize, 0.1f, 0.1f, 10.0f);
-                ImGui::DragInt("Grid Lines", &debugState.gridLines, 1, 2, 100);
+                float gridSize = debugState.gridSize;
+                int gridLines = debugState.gridLines;
+                if (ImGui::DragFloat("Grid Size", &gridSize, 0.1f, 0.1f, 10.0f)) {
+                    debugState.gridSize = gridSize;
+                }
+                if (ImGui::DragInt("Grid Lines", &gridLines, 1, 2, 100)) {
+                    debugState.gridLines = gridLines;
+                }
                 ImGui::TreePop();
             }
         }
@@ -893,6 +968,104 @@ void UIManager::RenderSceneHierarchy() {
             renderNode(mesh, currentId);
         }
     }
+}
+
+void UIManager::RenderSystemInfoWindow() {
+    if (!uiState.showSystemInfo) return;
+
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("System Information", &uiState.showSystemInfo)) {
+        auto& configManager = ConfigManager::GetInstance();
+
+        // CPU Information
+        if (ImGui::CollapsingHeader("CPU Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("Vendor: %s", configManager.GetConfigValue("System.CPU.Vendor").c_str());
+            ImGui::Text("Brand: %s", configManager.GetConfigValue("System.CPU.Brand").c_str());
+            ImGui::Text("Cores: %d", configManager.GetConfigValueInt("System.CPU.Cores"));
+            ImGui::Text("Threads: %d", configManager.GetConfigValueInt("System.CPU.Threads"));
+            ImGui::Text("Architecture: %s", configManager.GetConfigValue("System.CPU.Architecture").c_str());
+            
+            // CPU Features
+            std::string features = configManager.GetConfigValue("System.CPU.Features");
+            if (!features.empty()) {
+                ImGui::Text("Features:");
+                std::stringstream ss(features);
+                std::string feature;
+                ImGui::Indent();
+                while (std::getline(ss, feature, ';')) {
+                    if (!feature.empty()) {
+                        ImGui::BulletText("%s", feature.c_str());
+                    }
+                }
+                ImGui::Unindent();
+            }
+        }
+
+        // GPU Information
+        if (ImGui::CollapsingHeader("GPU Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("Vendor: %s", configManager.GetConfigValue("System.GPU.Vendor").c_str());
+            ImGui::Text("Renderer: %s", configManager.GetConfigValue("System.GPU.Renderer").c_str());
+            ImGui::Text("Version: %s", configManager.GetConfigValue("System.GPU.Version").c_str());
+            ImGui::Text("GLSL Version: %s", configManager.GetConfigValue("System.GPU.GLSLVersion").c_str());
+            
+            // GPU Extensions
+            if (ImGui::TreeNode("Extensions")) {
+                std::string extensions = configManager.GetConfigValue("System.GPU.Extensions");
+                std::stringstream ss(extensions);
+                std::string ext;
+                while (std::getline(ss, ext, ';')) {
+                    if (!ext.empty()) {
+                        ImGui::BulletText("%s", ext.c_str());
+                    }
+                }
+                ImGui::TreePop();
+            }
+        }
+
+        // Memory Information
+        if (ImGui::CollapsingHeader("Memory Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+            float totalPhysMB = std::stof(configManager.GetConfigValue("System.Memory.TotalPhysical"));
+            float availPhysMB = std::stof(configManager.GetConfigValue("System.Memory.AvailablePhysical"));
+            float totalVirtMB = std::stof(configManager.GetConfigValue("System.Memory.TotalVirtual"));
+            float availVirtMB = std::stof(configManager.GetConfigValue("System.Memory.AvailableVirtual"));
+
+            ImGui::Text("Physical Memory:");
+            ImGui::Indent();
+            ImGui::Text("Total: %.2f GB", totalPhysMB / 1024.0f);
+            ImGui::Text("Available: %.2f GB", availPhysMB / 1024.0f);
+            ImGui::Text("Used: %.2f GB", (totalPhysMB - availPhysMB) / 1024.0f);
+            ImGui::Unindent();
+
+            ImGui::Text("Virtual Memory:");
+            ImGui::Indent();
+            ImGui::Text("Total: %.2f GB", totalVirtMB / 1024.0f);
+            ImGui::Text("Available: %.2f GB", availVirtMB / 1024.0f);
+            ImGui::Text("Used: %.2f GB", (totalVirtMB - availVirtMB) / 1024.0f);
+            ImGui::Unindent();
+        }
+
+        // Operating System Information
+        if (ImGui::CollapsingHeader("Operating System", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("%s", configManager.GetConfigValue("System.OS").c_str());
+        }
+
+        // System Requirements Status
+        if (ImGui::CollapsingHeader("System Requirements")) {
+            bool meetsMin = configManager.MeetsMinimumRequirements();
+            bool meetsRec = configManager.MeetsRecommendedRequirements();
+
+            ImGui::TextColored(
+                meetsMin ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                "Minimum Requirements: %s", meetsMin ? "Met" : "Not Met"
+            );
+
+            ImGui::TextColored(
+                meetsRec ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
+                "Recommended Requirements: %s", meetsRec ? "Met" : "Not Met"
+            );
+        }
+    }
+    ImGui::End();
 }
 
 void UIManager::Render() {

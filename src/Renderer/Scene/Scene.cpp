@@ -5,15 +5,24 @@
 #include <limits>
 
 Scene::Scene(){
-    cameraPosition = glm::vec3(0.0f, 0.0f, 3.0f);
+    // Set up isometric view position (similar to Blender's default view)
+    cameraPosition = glm::vec3(7.3589f, 6.9258f, 4.9583f);
     cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
     cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    zoomLevel = 3.0f;  // Initial zoom level
-    yaw = -90.0f;   // Start looking along negative Z
-    pitch = 0.0f;
+    zoomLevel = 11.0f;  // Adjusted for isometric distance
+    yaw = -45.0f;   // Rotated 45 degrees for isometric
+    pitch = -35.264f;  // Arctan(1/√2) for isometric angle
     activeMesh = nullptr;
     UpdateCameraVectors();
     SetProjection(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
+
+    // Add default light
+    Light* defaultLight = new Light(
+        glm::vec3(4.0f, 4.0f, 4.0f),    // Position
+        glm::vec3(1.0f, 1.0f, 1.0f),    // Color
+        1.0f                            // Intensity
+    );
+    AddLight(defaultLight);
 }
 
 Scene::~Scene() {
@@ -21,6 +30,11 @@ Scene::~Scene() {
         delete obj;
     }
     objects.clear();
+
+    for (Light* light : lights) {
+        delete light;
+    }
+    lights.clear();
 }
 
 void Scene::AddObject(SceneObject* object) {
@@ -45,6 +59,9 @@ void Scene::SetProjection(float fov, float aspectRatio, float nearPlane, float f
 void Scene::Update(float deltaTime) {
     for (SceneObject* obj : objects) {
         obj->Update(deltaTime);
+    }
+    for (Light* light : lights) {
+        light->Update(deltaTime);
     }
 }
 
@@ -106,6 +123,13 @@ void Scene::Render(Shader* shader) {
     shader->Use();
     shader->SetUniformMat4("view", viewMatrix);
     shader->SetUniformMat4("projection", projectionMatrix);
+    shader->SetUniform3f("viewPos", cameraPosition.x, cameraPosition.y, cameraPosition.z);
+    
+    // Update and render lights
+    for (Light* light : lights) {
+        light->Update(0.0f);  // Update light visual representation
+        light->Render(shader);
+    }
     
     // Render all objects
     for (auto* object : objects) {
@@ -182,4 +206,13 @@ SceneObject* Scene::PickMesh(const glm::vec3& rayOrigin, const glm::vec3& rayDir
     }
 
     return closestMesh;
+}
+
+void Scene::AddLight(Light* light) {
+    lights.push_back(light);
+}
+
+void Scene::RemoveLight(Light* light) {
+    lights.erase(std::remove(lights.begin(), lights.end(), light), lights.end());
+    delete light;
 }

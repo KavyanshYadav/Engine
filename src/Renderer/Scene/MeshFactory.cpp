@@ -43,17 +43,42 @@ Mesh* MeshFactory::CreateCylinder(Shader* shader, float radius, float height, in
 
 std::vector<float> MeshFactory::GetCubeVertices() {
     return {
-        // Front face         // Colors
-        -0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f,  // Bottom-left - Red
-         0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f,  // Bottom-right - Green
-         0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 1.0f,  // Top-right - Blue
-        -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 0.0f,  // Top-left - Yellow
+        // Positions          // Normals
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
         
         // Back face
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,  // Bottom-left - Cyan
-         0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f,  // Bottom-right - Magenta
-         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,  // Top-right - White
-        -0.5f,  0.5f, -0.5f, 0.5f, 0.5f, 0.5f   // Top-left - Gray
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+        // Right face
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+        // Left face
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+
+        // Top face
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+
+        // Bottom face
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f
     };
 }
 
