@@ -320,8 +320,7 @@ void UIManager::RenderPropertiesPanel() {
             if (materials.empty()) {
                 ImGui::Text("No materials assigned");
                 if (ImGui::Button("Add Material")) {
-                    Material* newMaterial = new Material("New Material");
-                    mesh->AddMaterial(newMaterial);
+                    ImGui::OpenPopup("CreateNewMaterial");
                 }
             } else {
                 for (size_t i = 0; i < materials.size(); i++) {
@@ -405,8 +404,49 @@ void UIManager::RenderPropertiesPanel() {
 
             // Add material button
             if (ImGui::Button("Add Material")) {
-                Material* newMaterial = new Material("New Material");
-                mesh->AddMaterial(newMaterial);
+                ImGui::OpenPopup("CreateNewMaterial");
+            }
+
+            // Create New Material Popup
+            if (ImGui::BeginPopup("CreateNewMaterial")) {
+                static char newMaterialName[256] = "New Material";
+                ImGui::InputText("Material Name", newMaterialName, sizeof(newMaterialName));
+
+                static bool usePreset = false;
+                ImGui::Checkbox("Use Preset", &usePreset);
+
+                static int selectedPreset = 0;  // Declare and initialize selectedPreset
+                if (usePreset) {
+                    const char* presets[] = { "Metal", "Plastic", "Glass", "Wood" };
+                    ImGui::Combo("Preset", &selectedPreset, presets, IM_ARRAYSIZE(presets));
+                }
+
+                ImGui::Separator();
+
+                if (ImGui::Button("Create")) {
+                    Material* newMaterial;
+                    if (usePreset) {
+                        switch (selectedPreset) {
+                            case 0: newMaterial = Material::CreateMetal(); break;
+                            case 1: newMaterial = Material::CreatePlastic(); break;
+                            case 2: newMaterial = Material::CreateGlass(); break;
+                            case 3: newMaterial = Material::CreateWood(); break;
+                            default: newMaterial = new Material(newMaterialName);
+                        }
+                    } else {
+                        newMaterial = new Material(newMaterialName);
+                    }
+                    
+                    newMaterial->SetName(newMaterialName);
+                    mesh->AddMaterial(newMaterial);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::EndPopup();
             }
 
             ImGui::TreePop();
