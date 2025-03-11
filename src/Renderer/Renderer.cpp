@@ -49,7 +49,18 @@ Renderer::Renderer(Window * window):activeWindowClass(window){
    PanelX = new int(350);
    PanelY = new int(150);
     shader = new Shader("SHADERS/vertexShader.vert", "SHADERS/fragmentShader.frag");
+    
+    // Enable depth and stencil testing
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
+    
+    // Enable back face culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     std::vector<float> triangleVertices = {
         // Positions         // Colors
@@ -144,14 +155,14 @@ void Renderer::Clear() {
     // First clear the entire window with a darker color
     glDisable(GL_SCISSOR_TEST);
     glClearColor(0.15f, 0.15f, 0.15f, 1.0f);  // Darker grey for window background
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     
-    // Then set up and clear the viewport with a different color
+    // Then set up and clear the viewport with the background color
     glViewport(*PanelX, *PanelY, activeWindowClass->getWindowSize().x - panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
     glEnable(GL_SCISSOR_TEST);
     glScissor(*PanelX, *PanelY, activeWindowClass->getWindowSize().x - panelWidth, activeWindowClass->getWindowSize().y - panelHeight);
-    glClearColor(0.283f, 0.283f, 0.283f, 1.0f);  // Blender-like grey for viewport
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);  // Use custom background color
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     // First render the scene meshes
     for (Scene* scene : Scenes) {

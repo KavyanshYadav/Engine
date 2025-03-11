@@ -22,6 +22,15 @@ Mesh::Mesh(Shader* shader) : shader(shader) {
     parent = nullptr;
     animationTime = 0.0f;
 
+    // Initialize outline properties
+    isSelected = false;
+    outlineColor = glm::vec3(1.0f, 0.5f, 0.0f); // Brighter orange outline color
+    outlineScale = 0.05f; // Increased scale for more visible outline
+
+    // Create outline shader
+    outlineShader = new Shader("SHADERS/outline.vert", "SHADERS/outline.frag");
+    outlineShader->CreateShaderProgram();
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 }
@@ -29,6 +38,7 @@ Mesh::Mesh(Shader* shader) : shader(shader) {
 Mesh::~Mesh() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    delete outlineShader;
 }
 
 void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsigned int>& indices) {
@@ -48,11 +58,11 @@ void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsign
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    // Position attribute
+    // Position attribute (3 floats)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // Color attribute
+    // Normal attribute (3 floats)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
@@ -123,25 +133,56 @@ void Mesh::Update(float deltaTime) {
 void Mesh::Render(Shader* sceneShader) {
     if (!isVisible) return;
 
-    // Use the mesh's own shader
-    shader->Use();
+    // First pass: render the mesh normally
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilMask(0xFF);
     
-    // Set the transformation matrices
+    shader->Use();
     shader->SetUniformMat4("model", modelMatrix);
     shader->SetUniformMat4("view", sceneShader->GetViewMatrix());
     shader->SetUniformMat4("projection", sceneShader->GetProjectionMatrix());
     
-    // Apply material properties if available
     if (!materials.empty()) {
-        materials[0]->Apply(shader);  // Use the first material for now
+        materials[0]->Apply(shader);
     } else {
-        // Apply default material properties
         Material defaultMaterial;
         defaultMaterial.Apply(shader);
     }
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+
+    // Second pass: render outline if selected
+    if (isSelected) {
+        // Enable stencil test and set up stencil operations
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilMask(0x00); // Disable writing to stencil buffer
+        
+        // Enable depth testing but disable writing to depth buffer
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+        
+        // Disable culling to show back faces of outline
+        glDisable(GL_CULL_FACE);
+
+        outlineShader->Use();
+        outlineShader->SetUniformMat4("model", modelMatrix);
+        outlineShader->SetUniformMat4("view", sceneShader->GetViewMatrix());
+        outlineShader->SetUniformMat4("projection", sceneShader->GetProjectionMatrix());
+        outlineShader->SetUniform3f("outlineColor", outlineColor.x, outlineColor.y, outlineColor.z);
+        outlineShader->SetUniform1f("outlineScale", outlineScale);
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+
+        // Reset OpenGL state
+        glStencilMask(0xFF);
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_CULL_FACE);
+    }
+
     glBindVertexArray(0);
 }
 
@@ -244,4 +285,8 @@ void Mesh::UpdateAnimation(float deltaTime) {
     if (!isAnimated) return;
     animationTime += deltaTime;
     // Animation implementation will go here
+}
+
+void Mesh::SetSelected(bool selected) {
+    isSelected = selected;
 }

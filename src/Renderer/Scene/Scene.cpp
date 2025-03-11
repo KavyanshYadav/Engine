@@ -210,3 +210,15 @@ void Scene::RemoveLight(Light* light) {
     lights.erase(std::remove(lights.begin(), lights.end(), light), lights.end());
     delete light;
 }
+
+void Scene::SetactiveMesh(SceneObject* mesh) {
+    // Deselect previous active mesh
+    if (activeMesh) {
+        static_cast<Mesh*>(activeMesh)->SetSelected(false);
+    }
+
+    activeMesh = mesh;
+    if (activeMesh) {
+        static_cast<Mesh*>(activeMesh)->SetSelected(true);
+    }
+}

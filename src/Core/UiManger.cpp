@@ -279,6 +279,14 @@ void UIManager::RenderPropertiesPanel() {
         RenderSceneHierarchy();
     }
 
+    // Viewport Settings section
+    if (ImGui::CollapsingHeader("Viewport Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        static glm::vec3 backgroundColor(0.2f, 0.2f, 0.2f);  // Default dark gray
+        if (ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor))) {
+            renderer->SetBackgroundColor(backgroundColor);
+        }
+    }
+
     // Properties section - only show if something is selected
     auto scene = renderer->getActiveScene();
     SceneObject* activeMesh = scene->GetActiveMesh();
@@ -546,7 +554,7 @@ void UIManager::RenderPropertiesPanel() {
         ImGui::SameLine();
         if (ImGui::Button("Delete")) {
             scene->RemoveObject(activeMesh);
-            scene->SetActiveMesh(nullptr);
+            scene->SetactiveMesh(nullptr);
         }
     }
 
@@ -1094,6 +1102,7 @@ void UIManager::RenderSceneHierarchy() {
     // Add object button at the top
     if (ImGui::Button("Add Object")) {
         ImGui::OpenPopup("AddObjectPopup");
+
     }
 
     if (ImGui::BeginPopup("AddObjectPopup")) {
@@ -1167,7 +1176,7 @@ void UIManager::RenderSceneHierarchy() {
         
         // Handle selection
         if (ImGui::IsItemClicked()) {
-            scene->SetActiveMesh(mesh);
+            scene->SetactiveMesh(mesh);
         }
 
         // Context menu
@@ -1175,7 +1184,7 @@ void UIManager::RenderSceneHierarchy() {
             if (ImGui::MenuItem("Delete")) {
                 scene->RemoveObject(mesh);
                 if (scene->GetActiveMesh() == mesh) {
-                    scene->SetActiveMesh(nullptr);
+                    scene->SetactiveMesh(nullptr);
                 }
             }
             if (ImGui::MenuItem("Focus")) {

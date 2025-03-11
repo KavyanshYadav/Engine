@@ -13,6 +13,7 @@
 #include <vector>
 #include "Input.h"
 #include <glad/glad.h>
+#include <glm/glm.hpp>
 
 class Input;  // Forward declaration
 
@@ -28,6 +29,10 @@ public:
     Scene* getActiveScene();
     Shader* GetShader() { return shader; }
     int *PanelX,*PanelY;
+
+    // Background color control
+    void SetBackgroundColor(const glm::vec3& color) { backgroundColor = color; }
+    const glm::vec3& GetBackgroundColor() const { return backgroundColor; }
 
     // Axis lines
     void InitializeAxisLines();
@@ -50,6 +55,9 @@ private:
     GLFWwindow* window;
     Window * activeWindowClass;
     Input* input;  // Add Input member
+
+    // Background color
+    glm::vec3 backgroundColor = glm::vec3(0.2f, 0.2f, 0.2f);  // Default dark gray
 
     // Axis lines buffers
     struct {

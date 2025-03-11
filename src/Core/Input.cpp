@@ -100,7 +100,7 @@ void Input::HandleObjectSelection(GLFWwindow* window, int button, int action, in
         // Perform picking
         SceneObject* picked = scene->PickMesh(rayOrigin, rayDir);
         if (picked) {
-            scene->SetActiveMesh(picked);
+            scene->SetactiveMesh(picked);
             logger.Info("Picked mesh at ", picked);
             
             // Get picked object's position for debugging
@@ -108,7 +108,7 @@ void Input::HandleObjectSelection(GLFWwindow* window, int button, int action, in
             glm::vec3 pos = mesh->GetPosition();
             logger.Debug("Picked mesh position: ", pos.x, ", ", pos.y, ", ", pos.z);
         } else {
-            scene->SetActiveMesh(nullptr);
+            scene->SetactiveMesh(nullptr);
             logger.Info("No mesh picked - Ray missed all objects");
         }
         

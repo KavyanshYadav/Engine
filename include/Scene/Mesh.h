@@ -103,10 +103,17 @@ public:
     bool IsAnimated() const { return isAnimated; }
     void UpdateAnimation(float deltaTime);
 
+    // New outline properties and methods
+    void SetSelected(bool selected);
+    bool IsSelected() const { return isSelected; }
+    void SetOutlineColor(const glm::vec3& color) { outlineColor = color; }
+    void SetOutlineScale(float scale) { outlineScale = scale; }
+
 private:
     GLuint VAO, VBO, EBO;  
     GLuint indexCount;
     Shader *shader;
+    Shader *outlineShader;  // New shader for outline effect
     glm::vec3 position;
     glm::vec3 rotation;
     glm::vec3 scale;
@@ -140,4 +147,9 @@ private:
     
     // Animation data
     float animationTime;
+
+    // New outline properties
+    bool isSelected;
+    glm::vec3 outlineColor;
+    float outlineScale;
 };

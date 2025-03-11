@@ -26,7 +26,7 @@ public:
     std::vector<Light*> GetLights() const { return lights; }
     
     // Mesh picking related methods
-    void SetActiveMesh(SceneObject* mesh) { activeMesh = mesh; }
+    void SetactiveMesh(SceneObject* mesh);
     SceneObject* GetActiveMesh() const { return activeMesh; }
     SceneObject* PickMesh(const glm::vec3& rayOrigin, const glm::vec3& rayDir);
     glm::mat4 GetViewMatrix() const { return viewMatrix; }
