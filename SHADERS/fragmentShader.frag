@@ -19,6 +19,7 @@ uniform vec3 lightColor;
 uniform vec3 viewPos;
 
 const float PI = 3.14159265359;
+const float ambientStrength = 0.2; // Increased ambient for better visibility of dark faces
 
 // PBR functions
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
@@ -63,9 +64,9 @@ void main() {
     vec3 L = normalize(lightPos - FragPos);
     vec3 H = normalize(V + L);
 
-    // Calculate light attenuation
+    // Calculate light attenuation with adjusted falloff
     float distance = length(lightPos - FragPos);
-    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
+    float attenuation = 1.0 / (1.0 + 0.045 * distance + 0.0075 * distance * distance);
     vec3 radiance = lightColor * attenuation;
 
     // Calculate base reflectivity
@@ -85,16 +86,20 @@ void main() {
     vec3 kD = vec3(1.0) - kS;
     kD *= 1.0 - material.metallic;
 
+    // Enhance diffuse lighting
     float NdotL = max(dot(N, L), 0.0);
-
-    // Final color calculation with light color
+    
+    // Add ambient light with face orientation factor
+    float faceFactor = (dot(N, vec3(0, 1, 0)) * 0.5 + 0.5) * 0.3; // Subtle variation based on face orientation
+    vec3 ambient = (ambientStrength + faceFactor) * material.albedo * material.ao;
+    
+    // Final color calculation with enhanced contrast
     vec3 Lo = (kD * material.albedo / PI + specular) * radiance * NdotL;
-    
-    // Add ambient light
-    vec3 ambient = 0.03 * material.albedo * material.ao;
-    
     vec3 color = ambient + Lo + material.emissive * material.emissiveStrength;
 
+    // Enhance contrast
+    color = pow(color, vec3(1.1)); // Slight contrast boost
+    
     // HDR tonemapping and gamma correction
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));  

@@ -1,4 +1,5 @@
 #pragma once
+ #define GLM_ENABLE_EXPERIMENTAL
 #include "../Shader.h"
 #include "SceneObject.h"
 #include "Material.h"
@@ -109,6 +110,13 @@ public:
     void SetOutlineColor(const glm::vec3& color) { outlineColor = color; }
     void SetOutlineScale(float scale) { outlineScale = scale; }
 
+    // Bounding box methods
+    void InitializeBoundingBox();
+    void RenderBoundingBox(Shader* shader) const;
+    glm::vec3 GetMinBounds() const { return minBounds; }
+    glm::vec3 GetMaxBounds() const { return maxBounds; }
+    void UpdateBoundingBox();
+
 private:
     GLuint VAO, VBO, EBO;  
     GLuint indexCount;
@@ -152,4 +160,11 @@ private:
     bool isSelected;
     glm::vec3 outlineColor;
     float outlineScale;
+
+    // Bounding box data
+    GLuint boundingBoxVAO, boundingBoxVBO;
+    std::vector<float> boundingBoxVertices;
+    glm::vec3 minBounds;
+    glm::vec3 maxBounds;
+    bool boundingBoxInitialized;
 };

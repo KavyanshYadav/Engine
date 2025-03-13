@@ -1,6 +1,10 @@
 #include <glad/glad.h>
 #include "Scene/Mesh.h"
 #include "Scene/Material.h"
+#include "Scene/Scene.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/component_wise.hpp>
 #include <iostream>
 
 Mesh::Mesh(Shader* shader) : shader(shader) {
@@ -31,8 +35,15 @@ Mesh::Mesh(Shader* shader) : shader(shader) {
     outlineShader = new Shader("SHADERS/outline.vert", "SHADERS/outline.frag");
     outlineShader->CreateShaderProgram();
 
+    // Initialize OpenGL buffers
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    // Initialize bounding box
+    boundingBoxInitialized = false;
+    minBounds = glm::vec3(0.0f);
+    maxBounds = glm::vec3(0.0f);
 }
 
 Mesh::~Mesh() {
@@ -45,10 +56,6 @@ void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsign
     this->vertices = vertices;
     this->indices = indices;
     indexCount = static_cast<GLuint>(indices.size());
-
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
 
@@ -67,6 +74,20 @@ void Mesh::LoadMesh(const std::vector<float>& vertices, const std::vector<unsign
     glEnableVertexAttribArray(1);
 
     UpdateStats();
+    
+    // Calculate bounding box
+    if (!vertices.empty()) {
+        minBounds = glm::vec3(vertices[0], vertices[1], vertices[2]);
+        maxBounds = minBounds;
+
+        // Iterate through vertices (stride of 6 because each vertex has position and normal)
+        for (size_t i = 0; i < vertices.size(); i += 6) {
+            glm::vec3 pos(vertices[i], vertices[i + 1], vertices[i + 2]);
+            minBounds = glm::min(minBounds, pos);
+            maxBounds = glm::max(maxBounds, pos);
+        }
+        InitializeBoundingBox();
+    }
 }
 
 void Mesh::LoadObj(const std::string& filename) {
@@ -130,60 +151,21 @@ void Mesh::Update(float deltaTime) {
     }
 }
 
-void Mesh::Render(Shader* sceneShader) {
+void Mesh::Render(Shader* shader) {
     if (!isVisible) return;
 
-    // First pass: render the mesh normally
-    glStencilFunc(GL_ALWAYS, 1, 0xFF);
-    glStencilMask(0xFF);
-    
+    // Normal mesh rendering
     shader->Use();
-    shader->SetUniformMat4("model", modelMatrix);
-    shader->SetUniformMat4("view", sceneShader->GetViewMatrix());
-    shader->SetUniformMat4("projection", sceneShader->GetProjectionMatrix());
-    
-    if (!materials.empty()) {
-        materials[0]->Apply(shader);
-    } else {
-        Material defaultMaterial;
-        defaultMaterial.Apply(shader);
-    }
+    shader->SetUniformMat4("model", GetModelMatrix());
     
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
-
-    // Second pass: render outline if selected
-    if (isSelected) {
-        // Enable stencil test and set up stencil operations
-        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        glStencilMask(0x00); // Disable writing to stencil buffer
-        
-        // Enable depth testing but disable writing to depth buffer
-        glDepthFunc(GL_LEQUAL);
-        glDepthMask(GL_FALSE);
-        
-        // Disable culling to show back faces of outline
-        glDisable(GL_CULL_FACE);
-
-        outlineShader->Use();
-        outlineShader->SetUniformMat4("model", modelMatrix);
-        outlineShader->SetUniformMat4("view", sceneShader->GetViewMatrix());
-        outlineShader->SetUniformMat4("projection", sceneShader->GetProjectionMatrix());
-        outlineShader->SetUniform3f("outlineColor", outlineColor.x, outlineColor.y, outlineColor.z);
-        outlineShader->SetUniform1f("outlineScale", outlineScale);
-
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
-
-        // Reset OpenGL state
-        glStencilMask(0xFF);
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glDepthFunc(GL_LESS);
-        glDepthMask(GL_TRUE);
-        glEnable(GL_CULL_FACE);
-    }
-
+    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+
+    // Render bounding box if debug mode is enabled
+    if (Scene::GetDebugState().showBoundingBoxes && Scene::GetBoundingBoxShader()) {
+        RenderBoundingBox(Scene::GetBoundingBoxShader());
+    }
 }
 
 void Mesh::Translate(const glm::vec3& translation) {
@@ -289,4 +271,114 @@ void Mesh::UpdateAnimation(float deltaTime) {
 
 void Mesh::SetSelected(bool selected) {
     isSelected = selected;
+}
+
+void Mesh::InitializeBoundingBox() {
+    // Calculate bounds
+    if (vertices.empty()) return;
+
+    // Initialize bounds with first vertex (stride of 6: 3 for position, 3 for normal)
+    minBounds = glm::vec3(vertices[0], vertices[1], vertices[2]);
+    maxBounds = minBounds;
+
+    // Iterate through vertices (stride of 6 because each vertex has position and normal)
+    for (size_t i = 0; i < vertices.size(); i += 6) {
+        glm::vec3 pos(vertices[i], vertices[i + 1], vertices[i + 2]);
+        minBounds.x = std::min(minBounds.x, pos.x);
+        minBounds.y = std::min(minBounds.y, pos.y);
+        minBounds.z = std::min(minBounds.z, pos.z);
+        maxBounds.x = std::max(maxBounds.x, pos.x);
+        maxBounds.y = std::max(maxBounds.y, pos.y);
+        maxBounds.z = std::max(maxBounds.z, pos.z);
+    }
+
+    // Create vertices for bounding box (12 lines = 24 vertices)
+    boundingBoxVertices = {
+        // Front face
+        minBounds.x, minBounds.y, minBounds.z,
+        maxBounds.x, minBounds.y, minBounds.z,
+        
+        maxBounds.x, minBounds.y, minBounds.z,
+        maxBounds.x, maxBounds.y, minBounds.z,
+        
+        maxBounds.x, maxBounds.y, minBounds.z,
+        minBounds.x, maxBounds.y, minBounds.z,
+        
+        minBounds.x, maxBounds.y, minBounds.z,
+        minBounds.x, minBounds.y, minBounds.z,
+
+        // Back face
+        minBounds.x, minBounds.y, maxBounds.z,
+        maxBounds.x, minBounds.y, maxBounds.z,
+        
+        maxBounds.x, minBounds.y, maxBounds.z,
+        maxBounds.x, maxBounds.y, maxBounds.z,
+        
+        maxBounds.x, maxBounds.y, maxBounds.z,
+        minBounds.x, maxBounds.y, maxBounds.z,
+        
+        minBounds.x, maxBounds.y, maxBounds.z,
+        minBounds.x, minBounds.y, maxBounds.z,
+
+        // Connecting lines
+        minBounds.x, minBounds.y, minBounds.z,
+        minBounds.x, minBounds.y, maxBounds.z,
+        
+        maxBounds.x, minBounds.y, minBounds.z,
+        maxBounds.x, minBounds.y, maxBounds.z,
+        
+        maxBounds.x, maxBounds.y, minBounds.z,
+        maxBounds.x, maxBounds.y, maxBounds.z,
+        
+        minBounds.x, maxBounds.y, minBounds.z,
+        minBounds.x, maxBounds.y, maxBounds.z
+    };
+
+    // Create and setup VAO/VBO for bounding box
+    glGenVertexArrays(1, &boundingBoxVAO);
+    glGenBuffers(1, &boundingBoxVBO);
+
+    glBindVertexArray(boundingBoxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, boundingBoxVBO);
+    glBufferData(GL_ARRAY_BUFFER, boundingBoxVertices.size() * sizeof(float), boundingBoxVertices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    boundingBoxInitialized = true;
+}
+
+void Mesh::UpdateBoundingBox() {
+    // Update bounds based on current transformation
+    glm::mat4 model = GetModelMatrix();
+    glm::vec3 transformedMin = glm::vec3(model * glm::vec4(minBounds, 1.0f));
+    glm::vec3 transformedMax = glm::vec3(model * glm::vec4(maxBounds, 1.0f));
+
+    // Update bounding box vertices with transformed coordinates
+    // ... (similar to InitializeBoundingBox but with transformed coordinates)
+}
+
+void Mesh::RenderBoundingBox(Shader* shader) const {
+    if (!boundingBoxInitialized) return;
+
+    shader->Use();
+    shader->SetUniformMat4("model", GetModelMatrix());
+
+    // Enable line rendering
+    glLineWidth(2.0f);
+    
+    // Enable blending for transparency
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glBindVertexArray(boundingBoxVAO);
+    glDrawArrays(GL_LINES, 0, 24); // 12 lines = 24 vertices
+    glBindVertexArray(0);
+
+    // Reset line width and disable blending
+    glLineWidth(1.0f);
+    glDisable(GL_BLEND);
 }

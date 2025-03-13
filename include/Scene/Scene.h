@@ -3,8 +3,18 @@
 #include <vector>
 #include "SceneObject.h"
 #include "Light.h"
+#include "Gizmo.h"
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+
+// Debug state structure
+struct DebugState {
+    bool showBoundingBoxes = false;
+    bool wireframeMode = false;
+    bool showNormals = false;
+    bool showGrid = true;
+    bool showVertexPoints = false;
+};
 
 class Scene {
 public:
@@ -34,10 +44,21 @@ public:
     glm::vec3 GetCameraPosition() const { return cameraPosition; }
     glm::vec3 GetCameraTarget() const { return cameraTarget; }
 
+    // Gizmo related methods
+    void ShowGizmo(bool show) { gizmo->SetVisible(show); }
+    bool IsGizmoVisible() const { return gizmo->IsVisible(); }
+    void SetGizmoScale(float scale) { gizmo->SetScale(scale); }
+
+    // Debug state management
+    static DebugState& GetDebugState() { return debugState; }
+    static Shader* GetBoundingBoxShader() { return boundingBoxShader; }
+
 private:
     std::vector<SceneObject*> objects;
     std::vector<Light*> lights;
     SceneObject* activeMesh;  // Currently selected mesh
+    Gizmo* gizmo;            // Transformation gizmo
+    Shader* gizmoShader;     // Shader for the gizmo
     glm::mat4 viewMatrix;
     glm::mat4 projectionMatrix;
     glm::vec3 cameraPosition;
@@ -47,4 +68,7 @@ private:
     float yaw;   // Camera rotation around Y axis
     float pitch; // Camera rotation around X axis
     void UpdateCameraVectors();
+
+    static DebugState debugState;
+    static Shader* boundingBoxShader;
 };
